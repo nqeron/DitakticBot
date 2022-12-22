@@ -11,7 +11,7 @@ jobs:
     
     steps:
       - name: Setup Nim environment
-        uses: jiro4989/setup-nim-action@v1.1.4
+        uses: iffy/install-nim@v4.5.0
       
       - name: builds to bin/debug/
         run: nimble build
