@@ -1,32 +1,10 @@
-import std/strformat,  std/strutils, std/sequtils
+from board import Board, newBoard
+from tile import Color, Tile, Piece
+from move import Square, Move, Direction, Spread, Place
+import std/sequtils
 
-type
-    Color = enum
-        white, black
-
-    Piece = enum
-        flat, wall, cap
-
-    Tile = object 
-        piece: Piece
-        stack: seq[Color]
-
-    Board[N: static uint8] = array[N, array[N, Tile]]
-
-    Square = tuple[row: int, column: int]
-
-    Place = Piece
-
-    Direction = enum 
-        up, down, right, left
-
-    Spread = tuple[direction: Direction, pattern: seq[int]]
-
-    MoveKind = Place | Spread
-
-    Move[M: MoveKind] = tuple[square: Square, movekind: M]
-
-    Game[N: static uint8, B: static bool] = object 
+type 
+    Game*[N: static uint8, B: static bool] = object 
         board: Board[N]
         to_play: Color
         ply: uint16
@@ -53,10 +31,7 @@ proc stones_for_size(sz: uint8): (uint8, uint8) =
         result = (stones: 50'u8, capstones: 2'u8)
     else: result = (stones: 0'u8, capstones: 0'u8)
 
-proc newBoard[N: static uint8] (data: array[N, array[N, Tile]]): Board[N] =
-    result = data
-
-proc newGame[N: static uint8, B: static bool] (komi: int8): Game[N, B] =
+proc newGame*[N: static uint8, B: static bool] (komi: int8): Game[N, B] =
     let (stones, caps) = N.stones_for_size()
     var temp: array[N, array[N, Tile]]
     var addr_out = Game[N, B](
@@ -72,48 +47,11 @@ proc newGame[N: static uint8, B: static bool] (komi: int8): Game[N, B] =
     )
     return addr_out
 
-proc isTileEmpty(self: Tile): bool =
-    self.stack == @[]
-
-proc topTile(self: Tile): tuple[piece: Piece, color: Color] =
-    if not self.isTileEmpty:
-        return (self.piece, self.stack[^1])
-
-proc isOutOfBounds(square: Square, board: Board): bool =
-    let N = board.len
-    return (square.row < 0 or square.row >= N or square.column < 0 or square.column >= N)
-
 proc `[]`(game: var Game, square: Square): Tile =
     result = game.board[square.column][square.row]
 
 proc `[]=`(game: var Game, square: Square, tile: Tile) {. inline .} =
     game.board[square.column][square.row] = tile
-
-proc `not`(clr: Color): Color =
-    case clr
-    of white: return black
-    of black: return white
-    
-
-#proc `=` (tile:)
-  
-
-proc add(tile: Tile, to_add: seq[Color], piece: Piece): Tile =
-  var out_stack = tile.stack
-  out_stack.add(to_add)
-  result = Tile(piece: piece, stack: out_stack)
-
-
-proc nextInDir(square: Square, direction: Direction): Square =
-    case direction:
-    of up:
-        (row: square.row, column: square.column + 1)
-    of down:
-        (row: square.row, column: square.column - 1)
-    of left:
-        (row: square.row - 1, column: square.column)
-    of right:
-        (row: square.row + 1, column: square.column)
 
 proc getCounts(game: var Game): (uint8, uint8) =
     case game.to_play
@@ -141,7 +79,7 @@ proc executePlace(game: var Game, square: Square, piece: Piece): bool =
     
     if piece == cap and caps <= 0: return false
 
-    if  not square.isOutOfBounds(game.board):
+    if  not game.board.isSquareOutOfBounds(square):
         if game[square].isTileEmpty: #check if tile is empty
             game[square] = Tile(piece: piece, stack: @[color])
             return true
@@ -150,7 +88,7 @@ proc executePlace(game: var Game, square: Square, piece: Piece): bool =
 proc executeSpread(game: var Game, square: Square, direction: Direction, pattern: seq[int]): bool =
     let color = game.to_play
     
-    if square.isOutOfBounds(game.board):
+    if game.board.isSquareOutOfBounds(square):
         return false
     var tile = game[square]
     if tile.isTileEmpty:
@@ -229,7 +167,7 @@ proc executeMove (self: var Game, move: Move[Spread], color: Color): bool =
     let spread = move.movekind
     self.executeSpread(move.square, spread.direction, spread.pattern)
 
-proc play[N, B](game: var Game[N, B], move: Move) =  
+proc play*[N, B](game: var Game[N, B], move: Move) =  
     let success: bool = game.executeMove(move, game.to_play)
     if not success:
         echo: "Invalid Move!"
@@ -238,20 +176,3 @@ proc play[N, B](game: var Game[N, B], move: Move) =
     else:
         game.to_play = not game.to_play
     game.ply += 1
-
-var game = newGame[6'u8, true](2'i8)
-
-echo game.to_play
-
-game.play((square: (0, 0), movekind: flat))
-
-echo game.to_play
-
-game.play((square: (0, 5), movekind: flat))
-
-echo game.to_play
-
-game.play((square: (1, 5), movekind: flat))
-
-echo game.to_play
-#game.display_tps()
