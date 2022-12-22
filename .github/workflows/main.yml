@@ -10,10 +10,6 @@ jobs:
     runs-on: windows-latest
     
     steps:
-      - name: Setup Nim environment
-        uses: iffy/install-nim@v4.5.0
-      
       - uses: actions/checkout@v3
-      
-      - name: builds to bin/debug/
-        run: nimble build
+      - uses: iffy/install-nim@v4.5.0
+      - run: nimble build
