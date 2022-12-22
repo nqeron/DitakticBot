@@ -18,15 +18,16 @@ task debug, "Build debug":
     binDir = 
         when defined(windows): "bin/debug/windows" 
         else: 
-            when defined(macosx): "bin/debug/osx" 
+            when definde(macosx): "bin/debug/osx"
             else: "bin/debug/other"
         
     exec "nimble build"
 
 task release, "Build release":
-    binDir = 
-        when defined(windows): "bin/release/windows" 
-        else: 
-            when defined(macosx): "bin/release/osx" 
-        else: "bin/release/other"
-    exec "nimble build -d:release"
+   binDir = 
+       when defined(windows): "bin/release/windows" 
+       else: 
+           when defined(macosx): "bin/release/osx" 
+           else: "bin/release/other"
+
+   exec "nimble build -d:release"
