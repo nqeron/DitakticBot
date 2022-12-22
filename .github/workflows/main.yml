@@ -1,0 +1,17 @@
+on:
+  pull_request:
+    branches:
+      - main
+      
+jobs:
+
+  build_debug_windows:
+    name: build debug for windows
+    runs-on: windows-latest
+    
+    steps:
+      - name: Setup Nim environment
+      - uses: jiro4989/setup-nim-action@v1.1.4
+      
+      - name: builds to bin/debug/
+      - run: nimble build
