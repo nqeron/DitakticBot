@@ -6,7 +6,7 @@ description = "DitakticBot"
 license = "MIT"
 
 srcDir = "src"
-binDir = "bin"
+binDir = when defined(windows): "bin/windows" else: when defined(macosx): "bin/osx" else: "bin/other"
 bin = @["main"]
 
 skipExt = @["nim"]
