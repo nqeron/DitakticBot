@@ -105,14 +105,27 @@ proc executeSpread(board: var Board, square: Square, direction: Direction, patte
     
     if tile.stack.len < numPieces:
         return false 
+
+    let origBoardState = board
     
     var toDrop = tile.stack[^numPieces..^1]
 
-    tile.stack = tile.stack[0 ..< ^numPieces]
+    board[square] = if numPieces == len(tile.stack): default(Tile) else: Tile(piece: tile.piece, stack: tile.stack[0 ..< ^numPieces])
 
     var pattern_idx = 0
+
     var nextSquare: Square = square.nextInDir(direction)
     while pattern_idx < pattern.len:
+
+        case board[nextSquare].topTile.piece
+        of wall:
+            if not( tile.piece == cap and (pattern_idx == (len(pattern) - 1)) and pattern[pattern_idx] == 1): 
+                board = origBoardState
+                return false 
+        of cap:
+            board = origBoardState
+            return false
+        of flat: discard
 
         board[nextSquare] = board[nextSquare].add(toDrop[0..<pattern[pattern_idx]], 
                                 if pattern_idx == (len(pattern) - 1): tile.piece else: flat)
@@ -145,13 +158,17 @@ echo myBoard[0][1].topTile
 ]#
 
 var success = executeMove(myBoard, (square: (0, 0), movekind: flat), black)
-success = success and executeMove(myBoard, (square: (0, 4), movekind: flat), white)
+success = success and executeMove(myBoard, (square: (0, 4), movekind: cap), white)
+success = success and executeMove(myBoard, (square: (1, 4), movekind: flat), white)
+success = success and executeMove(myBoard, (square: (3, 4), movekind: wall), white)
 success = success and executeMove(myBoard, (square: (0, 4), movekind: Spread((direction: right, pattern: @[1]))), white)
+
+echo $myBoard, "", success
+
+success = success and executeMove(myBoard, (square: (1, 4), movekind: Spread((direction: right, pattern: @[1,1]))), white)
 
 
 echo $myBoard, "", success
 #executeMove(myBoard, Move(square: (2, 4)), movekind: Place(flat))
 
 #myBoard.executePlace(Square(row: 1,column: 1), black, cap)
-
-echo $myBoard
