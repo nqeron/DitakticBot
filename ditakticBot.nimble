@@ -6,7 +6,8 @@ description = "DitakticBot"
 license = "MIT"
 
 srcDir = "src"
-binDir = when defined(windows): "bin/windows" else: when defined(macosx): "bin/osx" else: "bin/other"
+binDir = "bin"
+ 
 bin = @["main"]
 
 skipExt = @["nim"]
@@ -14,7 +15,18 @@ skipExt = @["nim"]
 requires "nim >= 1.6.10"
 
 task debug, "Build debug":
+    binDir = 
+        when defined(windows): "bin/debug/windows" 
+        else: 
+            when defined(macosx): "bin/debug/osx" 
+            else: "bin/debug/other"
+        
     exec "nimble build"
 
 task release, "Build release":
+    binDir = 
+        when defined(windows): "bin/release/windows" 
+        else: 
+            when defined(macosx): "bin/release/osx" 
+        else: "bin/release/other"
     exec "nimble build -d:release"
