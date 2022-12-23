@@ -4,6 +4,35 @@ from tile import Tile, Piece, Color, isTileEmpty
 import std/strutils, std/sequtils, std/strformat
 import ../util/error
 
+type
+    CustomStones* = tuple[wStones: uint8, wCaps: uint8, bStones: uint8, bCaps: uint8]
+
+
+proc `dec`(customStones: var CustomStones, color: Color, piece: Piece): Error =
+    if  (color == white and piece == flat) or  (color == white and piece == wall):
+        if customStones.wStones == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            customStones.wStones -= 1
+    elif color == white and piece == cap:
+        if customStones.wCaps == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            customStones.wCaps -= 1
+    elif (color == black and piece == flat) or  (color == black and piece == wall):
+        if customStones.bStones == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            customStones.bStones -= 1
+    elif color == black and piece == cap:
+        if customStones.bCaps == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            customStones.bCaps -= 1
+
+    return default(Error)
+
+
 proc parseColor(val: char): (Color, Error) =
     case val:
     of '1': result = (Color.white, default(Error))
@@ -74,7 +103,7 @@ proc getPlyFromMove(color: Color, moveNum: int, swap: bool): uint16 =
         of Color.black:
             moveNum * 2 + 1
 
-proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8): (Game, Error) =
+proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, customStonesConst: CustomStones = default(CustomStones)): (Game, Error) =
     
     let segments = val.split(' ')
 
@@ -107,13 +136,13 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8): (Game, Error
     var colIdx = 0
 
     let (stones, caps) = stones_for_size( uint8 size )
-
-    var wStones = stones
-    var wCaps = caps
-
-    var bStones = stones
-    var bCaps = caps
-
+ 
+    var customStones =
+        if customStonesConst == default(CustomStones):
+            (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
+        else:
+            customStonesConst
+        
     while colIdx < boardStringSeq.len:
 
         var parseRowIdx = 0
@@ -148,35 +177,22 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8): (Game, Error
                 rowIdx += 1
                 continue
 
-            for clr in tileParsed.stack[0..^1]:
-                case clr:
-                of black:
-                    bStones -= 1
-                of white:
-                    wStones -= 1
+            for clr in tileParsed.stack[0 ..< ^1]:
+                err = customStones.dec(clr, flat)
+                err.add(&"Error subtracting stones at col: {colIdx}, {rowIdx}")
+                if ?err: return (default(Game), err)
             
-            case tileParsed.piece:
-            of cap:
-                case tileParsed.stack[^1]:
-                of white:
-                    wCaps -= 1
-                of black:
-                    bCaps -= 1
-            else:
-                case tileParsed.stack[^1]:
-                of white:
-                    wStones -= 1
-                of black:
-                    bStones -= 1
+            err = customStones.dec(tileParsed.stack[^1], tileParsed.piece)
 
-            if wStones < 0 or bStones < 0 or wCaps < 0 or bCaps < 0: return (default(Game), newError("Too many stones placed given standard for board size")) # TODO - allow for custom stone amounts
+            err.add(&"Error subtracting top piece at col: {colIdx}, {rowIdx}")
+            if ?err: return (default(Game), err)
 
             parseRowIdx += 1
             rowIdx += 1
 
         colIdx += 1
 
-    var game = Game( board: boardB, to_play: to_play_clr, ply: cur_ply, white_stones: wStones, white_caps: wCaps, black_stones: bStones, black_caps: bCaps, half_komi: komi, reversible_plies: 0'u8, swap: swap)
+    var game = Game( board: boardB, to_play: to_play_clr, ply: cur_ply, white_stones: customStones.wStones, white_caps: customStones.wCaps, black_stones: customStones.bStones, black_caps: customStones.bCaps, half_komi: komi, reversible_plies: 0'u8, swap: swap)
 
     return (game, default(Error))
             
