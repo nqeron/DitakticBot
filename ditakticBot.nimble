@@ -13,6 +13,7 @@ bin = @["main"]
 skipExt = @["nim"]
 
 requires "nim >= 1.6.10"
+requires "regex"
 
 task debug, "Build debug":
     binDir = 

@@ -1,4 +1,4 @@
-from board import Board, isSquareOutOfBounds
+from board import Board, isSquareOutOfBounds, newBoard
 from tile import Color, Tile, Piece, isTileEmpty, topTile, add
 from move import Square, Move, Direction, Spread, Place, nextInDir
 import std/sequtils
@@ -49,7 +49,7 @@ proc newGameR*(a: Board, b: Color, c: uint16, d: uint8, e: uint8, f: uint8, g: u
 
 proc newGame*(size: uint8, komi: int8, swap: bool): Game =
     let (stones, caps) = size.stones_for_size()
-    var board = default(Board)
+    var board = newBoard(int size)
     var addr_out = Game(
         board: board,
         to_play: if swap: black else: white,
@@ -64,11 +64,11 @@ proc newGame*(size: uint8, komi: int8, swap: bool): Game =
     )
     return addr_out
 
-proc `[]`(game: var Game, square: Square): Tile =
-    result = game.board[square.column][square.row]
+proc `[]`*(game: var Game, square: Square): Tile =
+    result = game.board[square.row][square.column]
 
-proc `[]=`(game: var Game, square: Square, tile: Tile) {. inline .} =
-    game.board[square.column][square.row] = tile
+proc `[]=`*(game: var Game, square: Square, tile: Tile) {. inline .} =
+    game.board[square.row][square.column] = tile
 
 proc getCounts(game: var Game): (uint8, uint8) =
     case game.to_play

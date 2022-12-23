@@ -1,7 +1,8 @@
 from game import Game, stones_for_size
-from board import Board
-from tile import Tile, Piece, Color
+from board import Board, newBoard
+from tile import Tile, Piece, Color, isTileEmpty
 import std/strutils, std/sequtils
+import regex
 
 proc parseColor(val: char): (Color, bool) =
     case val:
@@ -18,7 +19,7 @@ proc parsePiece(val: char): (Piece, Color, bool) =
         result = (Piece.flat, clr, err)
 
 proc parseTile(val: string): (Tile, bool) =
-    if val == "X":
+    if val == "x":
         return (default(Tile), false)
     if val.len <= 0:
         return (default(Tile), true)
@@ -88,14 +89,13 @@ proc parseGame*(val: string, swap: bool, komi: int8): (Game, bool) =
     let rows = boardStr.split('/')
     let size = rows.len
 
-    var boardB: Board = default(Board)
-    
+    var boardB: Board = newBoard(size)   
     #if board.len <= 0: return false
 
     let boardStringSeq = rows.mapIt(it.split(','))
 
     var colIdx = 0
-    var rowIdx = 0
+    var parseRowIdx = 0
 
     let (stones, caps) = stones_for_size( uint8 size )
 
@@ -107,19 +107,34 @@ proc parseGame*(val: string, swap: bool, komi: int8): (Game, bool) =
 
     while colIdx < boardStringSeq.len:
 
-        rowIdx = 0
+        var parseRowIdx = 0
+        var rowIdx = 0
+        while parseRowIdx < boardStringSeq[colIdx].len:
 
-        while rowIdx < boardStringSeq[colIdx].len:
+            let tileStr = boardStringSeq[colIdx][parseRowIdx]
 
-            let tileStr = boardStringSeq[colIdx][rowIdx]
+            if tileStr.len == 2 and tileStr[0] == 'x':
+                let blanks = parseInt( tileStr[1 .. ^1] )
+
+                if blanks+rowIdx > boardStringSeq.len: return (default(Game), false)
+
+                
+                boardB[colIdx][rowIdx ..< rowIdx + blanks] = newSeqWith(blanks, default(Tile))
+
+                parseRowIdx += 1
+                rowIdx += blanks
+                continue
 
             let (tileParsed, tileErr) = tileStr.parseTile
-
-            echo tileParsed, "; ", tileErr
             
             if tileErr: return (default(Game), false)
 
             boardB[colIdx][rowIdx] = tileParsed
+
+            if tileParsed.isTileEmpty:
+                parseRowIdx += 1
+                rowIdx += 1
+                continue
 
             for clr in tileParsed.stack[0..^1]:
                 case clr:
@@ -143,7 +158,8 @@ proc parseGame*(val: string, swap: bool, komi: int8): (Game, bool) =
                     bStones -= 1
 
             if wStones < 0 or bStones < 0 or wCaps < 0 or bCaps < 0: return (default(Game), false)
-            
+
+            parseRowIdx += 1
             rowIdx += 1
 
         colIdx += 1
