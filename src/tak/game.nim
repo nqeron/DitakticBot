@@ -1,21 +1,22 @@
-from board import Board, newBoard
-from tile import Color, Tile, Piece
-from move import Square, Move, Direction, Spread, Place
+from board import Board, isSquareOutOfBounds, newBoard
+from tile import Color, Tile, Piece, isTileEmpty, topTile, add
+from move import Square, Move, Direction, Spread, Place, nextInDir
 import std/sequtils
 
 type 
-    Game*[N: static uint8, B: static bool] = object 
-        board: Board[N]
-        to_play: Color
-        ply: uint16
-        white_stones: uint8
-        white_caps: uint8
-        black_stones: uint8
-        black_caps: uint8
-        half_komi: int8
-        reversible_plies: uint8
+    Game* = object 
+        board*: Board
+        to_play*: Color
+        ply*: uint16
+        white_stones*: uint8
+        white_caps*: uint8
+        black_stones*: uint8
+        black_caps*: uint8
+        half_komi*: int8
+        reversible_plies*: uint8
+        swap*: bool
 
-proc stones_for_size(sz: uint8): (uint8, uint8) = 
+proc stones_for_size*(sz: uint8): (uint8, uint8) = 
     case sz
     of 3:
         result = (stones: 10'u8, capstones: 0'u8)
@@ -31,12 +32,27 @@ proc stones_for_size(sz: uint8): (uint8, uint8) =
         result = (stones: 50'u8, capstones: 2'u8)
     else: result = (stones: 0'u8, capstones: 0'u8)
 
-proc newGame*[N: static uint8, B: static bool] (komi: int8): Game[N, B] =
-    let (stones, caps) = N.stones_for_size()
-    var temp: array[N, array[N, Tile]]
-    var addr_out = Game[N, B](
-        board: newBoard[N](temp),
-        to_play: when B: black else: white,
+proc newGameR*(a: Board, b: Color, c: uint16, d: uint8, e: uint8, f: uint8, g: uint8, h: int8, i: uint8, j: bool): Game =
+    var g = Game(
+        board: a,
+        to_play: b,
+        ply: c,
+        white_stones: d,
+        white_caps: e, 
+        black_stones: f,
+        black_caps: g,
+        half_komi: h,
+        reversible_plies: i,
+        swap: j
+    )
+    return g
+
+proc newGame*(size: uint8, komi: int8, swap: bool): Game =
+    let (stones, caps) = size.stones_for_size()
+    var board = newBoard(int size)
+    var addr_out = Game(
+        board: board,
+        to_play: if swap: black else: white,
         ply: 0,
         white_stones: stones,
         white_caps: caps, 
@@ -44,14 +60,15 @@ proc newGame*[N: static uint8, B: static bool] (komi: int8): Game[N, B] =
         black_caps: caps,
         half_komi: komi,
         reversible_plies: 0'u8,
+        swap: swap
     )
     return addr_out
 
-proc `[]`(game: var Game, square: Square): Tile =
-    result = game.board[square.column][square.row]
+proc `[]`*(game: var Game, square: Square): Tile =
+    result = game.board[square.row][square.column]
 
-proc `[]=`(game: var Game, square: Square, tile: Tile) {. inline .} =
-    game.board[square.column][square.row] = tile
+proc `[]=`*(game: var Game, square: Square, tile: Tile) {. inline .} =
+    game.board[square.row][square.column] = tile
 
 proc getCounts(game: var Game): (uint8, uint8) =
     case game.to_play
@@ -97,7 +114,7 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     let count = pattern.len
     case direction:
     of up:
-        if square.column + count >= game.len:
+        if square.column + count >= game.board.len:
             return false
     of down:
         if square.column - count < 0:
@@ -106,7 +123,7 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
         if square.row - count < 0:
             return false
     of right:
-        if square.row + count > game.len:
+        if square.row + count > game.board.len:
             return false
     if not (tile.topTile.color == color):
         return false
@@ -148,8 +165,8 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     #drop one by one onto square in direction
     return true
 
-proc executeMove[N, B] (self: var Game[N, B], move: Move[Place], color: Color): bool =
-    when not B:
+proc executeMove(self: var Game, move: Move[Place], color: Color): bool =
+    if not self.swap:
         if (self.ply == 0 and color == black) or (self.ply == 1 and color == white) or (self.ply > 0 and self.ply mod 2 == 0 and color == black) or (self.ply > 1 and self.ply mod 2 == 1 and color == white): return false
     else:
         if (self.ply == 0 and color == white) or (self.ply == 1 and color == black) or (self.ply > 0 and self.ply mod 2 == 0 and color == black) or (self.ply > 1 and self.ply mod 2 == 1 and color == white): return false 
@@ -167,11 +184,11 @@ proc executeMove (self: var Game, move: Move[Spread], color: Color): bool =
     let spread = move.movekind
     self.executeSpread(move.square, spread.direction, spread.pattern)
 
-proc play*[N, B](game: var Game[N, B], move: Move) =  
+proc play*(game: var Game, move: Move) =  
     let success: bool = game.executeMove(move, game.to_play)
     if not success:
         echo: "Invalid Move!"
-    when B:
+    if game.swap:
         if game.ply != 1: game.to_play = not game.to_play
     else:
         game.to_play = not game.to_play

@@ -1,14 +1,13 @@
 from tile import Tile, Color, Piece
+import std/sequtils
 
 from move import Square, Move, Direction, Spread, Place
 
 type
-    
-    Board*[N: static uint8] = array[N, array[N, Tile]]
+    Board* = seq[seq[Tile]]
 
-proc newBoard*[N: static uint8] (data: array[N, array[N, Tile]]): Board[N] =
-    result = data
-
+proc newBoard*(size: int): Board =
+     result = newSeqWith(size, newSeq[Tile](size))
 
 proc isSquareOutOfBounds*(board: Board, square: Square): bool =
     let N = board.len
