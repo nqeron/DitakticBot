@@ -1,21 +1,47 @@
-from board import Board, isSquareOutOfBounds, newBoard
-from tile import Color, Tile, Piece, isTileEmpty, topTile, add
+import board
+import tile
 from move import Square, Move, Direction, Spread, Place, nextInDir
-import std/sequtils
+import std/sequtils, std/strformat, std/math
+import ../util/error
 
 type 
+
+    StoneCounts* = tuple[wStones: uint8, wCaps: uint8, bStones: uint8, bCaps: uint8]
+
     Game* = object 
         board*: Board
         to_play*: Color
         ply*: uint16
-        white_stones*: uint8
-        white_caps*: uint8
-        black_stones*: uint8
-        black_caps*: uint8
+        stoneCounts*: StoneCounts
         half_komi*: int8
         reversible_plies*: uint8
         swap*: bool
 
+proc `dec`*(StoneCounts: var StoneCounts, color: Color, piece: Piece): Error =
+    if  (color == white and piece == flat) or  (color == white and piece == wall):
+        if StoneCounts.wStones == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            StoneCounts.wStones -= 1
+    elif color == white and piece == cap:
+        if StoneCounts.wCaps == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            StoneCounts.wCaps -= 1
+    elif (color == black and piece == flat) or  (color == black and piece == wall):
+        if StoneCounts.bStones == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            StoneCounts.bStones -= 1
+    elif color == black and piece == cap:
+        if StoneCounts.bCaps == 0:
+            return newError("Can not subtract from no stones")
+        else:
+            StoneCounts.bCaps -= 1
+
+    return default(Error)
+
+    
 proc stones_for_size*(sz: uint8): (uint8, uint8) = 
     case sz
     of 3:
@@ -32,32 +58,23 @@ proc stones_for_size*(sz: uint8): (uint8, uint8) =
         result = (stones: 50'u8, capstones: 2'u8)
     else: result = (stones: 0'u8, capstones: 0'u8)
 
-proc newGameR*(a: Board, b: Color, c: uint16, d: uint8, e: uint8, f: uint8, g: uint8, h: int8, i: uint8, j: bool): Game =
-    var g = Game(
-        board: a,
-        to_play: b,
-        ply: c,
-        white_stones: d,
-        white_caps: e, 
-        black_stones: f,
-        black_caps: g,
-        half_komi: h,
-        reversible_plies: i,
-        swap: j
-    )
-    return g
+proc getColorToPlay*(game: var Game): Color =
+    result = game.to_play
+    if (game.swap and game.ply < 2):
+        result = not result
+
+proc `default`*(sz: uint8): StoneCounts =
+    let (stones, caps) = sz.stones_for_size
+    result = (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
 
 proc newGame*(size: uint8, komi: int8, swap: bool): Game =
-    let (stones, caps) = size.stones_for_size()
+    var stnCounts: StoneCounts = default(size)
     var board = newBoard(int size)
     var addr_out = Game(
         board: board,
-        to_play: if swap: black else: white,
+        to_play: white,
         ply: 0,
-        white_stones: stones,
-        white_caps: caps, 
-        black_stones: stones,
-        black_caps: caps,
+        stoneCounts: stnCounts,
         half_komi: komi,
         reversible_plies: 0'u8,
         swap: swap
@@ -70,68 +87,54 @@ proc `[]`*(game: var Game, square: Square): Tile =
 proc `[]=`*(game: var Game, square: Square, tile: Tile) {. inline .} =
     game.board[square.row][square.column] = tile
 
-proc getCounts(game: var Game): (uint8, uint8) =
-    case game.to_play
-    of white:
-        (game.white_stones, game.white_caps)
-    of black:
-        (game.black_stones, game.black_caps)
 
-proc setCounts(game: var Game, counts: (uint8, uint8)) =
-    case game.to_play:
-    of white:
-        game.white_stones = counts[0]
-        game.white_caps = counts[1]
-    of black:
-        game.black_stones = counts[0]
-        game.black_caps = counts[1]
-
-proc executePlace(game: var Game, square: Square, piece: Piece): bool =
-    # TODO - check that piece is still available
-    let (stones, caps) = game.getCounts()
-  
-    let color = game.to_play
+proc executePlace(game: var Game, square: Square, piece: Piece): Error =
+    let color = game.getColorToPlay()
     
-    if stones <= 0: return false
+    var err = game.stoneCounts.dec(color, piece)
+    if ?err:
+        err.add("not enough stones in reserve") 
+        return err
     
-    if piece == cap and caps <= 0: return false
+    if  game.board.isSquareOutOfBounds(square): return newError("square is out of bounds")
 
-    if  not game.board.isSquareOutOfBounds(square):
-        if game[square].isTileEmpty: #check if tile is empty
-            game[square] = Tile(piece: piece, stack: @[color])
-            return true
-    return false
+    if not game[square].isTileEmpty: return newError("Cannot place piece in on square with existing pieces") #check if tile is empty
+        
+    game[square] = Tile(piece: piece, stack: @[color])
 
-proc executeSpread(game: var Game, square: Square, direction: Direction, pattern: seq[int]): bool =
+    return default(Error)
+
+proc executeSpread(game: var Game, square: Square, direction: Direction, pattern: seq[int]): Error =
     let color = game.to_play
     
     if game.board.isSquareOutOfBounds(square):
-        return false
+        return newError("Square is out of bounds")
     var tile = game[square]
     if tile.isTileEmpty:
-        return false
+        return newError("No pieces on tile to move")
+
+    if not (tile.topTile.color == color):
+        return newError("Top tile does not belong to player")
 
     let count = pattern.len
     case direction:
     of up:
         if square.column + count >= game.board.len:
-            return false
+            return newError("Spread moves past bound of board")
     of down:
         if square.column - count < 0:
-            return false
+            return newError("Spread moves past bound of board")
     of left:
         if square.row - count < 0:
-            return false
+            return newError("Spread moves past bound of board")
     of right:
         if square.row + count > game.board.len:
-            return false
-    if not (tile.topTile.color == color):
-        return false
+            return newError("Spread moves past bound of board")
 
     let numPieces = foldl(pattern, a + b)
     
     if tile.stack.len < numPieces:
-        return false 
+        return newError("number of pieces in move exceeds number of pieces in stack")
 
     let origBoardState = game
     
@@ -148,10 +151,10 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
         of wall:
             if not( tile.piece == cap and (pattern_idx == (len(pattern) - 1)) and pattern[pattern_idx] == 1): 
                 game = origBoardState
-                return false 
+                return newError("can not move into square")
         of cap:
             game = origBoardState
-            return false
+            return newError("can not move into square")
         of flat: discard
 
         game[nextSquare] = game[nextSquare].add(toDrop[0..<pattern[pattern_idx]], 
@@ -163,33 +166,43 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
 
     #take top pieces - sum of pattern
     #drop one by one onto square in direction
-    return true
+    return default(Error)
 
-proc executeMove(self: var Game, move: Move[Place], color: Color): bool =
-    if not self.swap:
-        if (self.ply == 0 and color == black) or (self.ply == 1 and color == white) or (self.ply > 0 and self.ply mod 2 == 0 and color == black) or (self.ply > 1 and self.ply mod 2 == 1 and color == white): return false
-    else:
-        if (self.ply == 0 and color == white) or (self.ply == 1 and color == black) or (self.ply > 0 and self.ply mod 2 == 0 and color == black) or (self.ply > 1 and self.ply mod 2 == 1 and color == white): return false 
+proc executeMove(self: var Game, move: Move[Place]): Error =
+
+    if self.ply < 2 and move.movekind != flat: return newError("Must place a flat on the first turn!")
+
+    var err = self.executePlace(move.square, move.movekind)
     
-    let success: bool = self.executePlace(move.square, move.movekind)
-    if success:
-        let (stones, caps) = self.getCounts()
-        if (move.movekind == cap): self.setCounts((stones, caps - 1))
-        else: self.setCounts((stones - 1, caps))
-    return success
+    return err
 
-proc executeMove (self: var Game, move: Move[Spread], color: Color): bool =
-    if self.ply <= 1: return false
-    if (self.ply mod 2 == 0 and color == black) or (self.ply mod 2 == 1 and color == white): return false 
+proc executeMove (self: var Game, move: Move[Spread]): Error =
     let spread = move.movekind
-    self.executeSpread(move.square, spread.direction, spread.pattern)
+    var err = self.executeSpread(move.square, spread.direction, spread.pattern)
+    if ?err:
+        err.add("Error executing spread")
+        return err
 
-proc play*(game: var Game, move: Move) =  
-    let success: bool = game.executeMove(move, game.to_play)
-    if not success:
-        echo: "Invalid Move!"
+proc play*(game: var Game, move: Move): Error =  
+    var err = game.executeMove(move)
+    if ?err: 
+        err.add( &"Error executing move: {move}")
+        return err
     if game.swap:
         if game.ply != 1: game.to_play = not game.to_play
     else:
         game.to_play = not game.to_play
     game.ply += 1
+
+proc getMove(game: Game): int =
+    echo game.ply
+
+    floorDiv(int game.ply, 2)
+
+proc toTps*(game: Game): string =
+    
+    let boardTPS = game.board.getTPSBoard()
+    let colorNum = game.to_play.numVal
+    let move = game.getMove()
+
+    result = &"{boardTPS} {colorNum} {move}"

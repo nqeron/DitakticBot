@@ -14,6 +14,15 @@ type
 
     Move*[M: MoveKind] = tuple[square: Square, movekind: M]
 
+proc `&`*[V: Move](x: string, mv: Move): string =
+    x.add($mv)
+
+template newSquare*(r: int, col: int): Square =
+    (row: r, column: col)
+
+template newMove*[M: MoveKind](sq: Square, mk: M): Move[M] =
+    (square: sq, movekind: mk)
+    
 
 proc nextInDir*(square: Square, direction: Direction): Square =
     case direction:

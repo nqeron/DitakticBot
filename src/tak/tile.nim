@@ -32,3 +32,8 @@ proc `not`*(clr: Color): Color =
     case clr
     of white: return black
     of black: return white
+
+proc numVal*(clr: Color): int = 
+    case clr
+    of white: 1
+    of black: 2
