@@ -53,7 +53,7 @@ proc parseTile(val: string): (Tile, Error) =
 
     return (Tile(piece: piece, stack: out_seq), default(Error))
 
-proc getPlyFromMove(color: Color, moveNum: int, swap: bool): uint16 =
+proc getPlyFromMove(color: Color, moveNum: int): uint16 =
     case color
     of Color.white:
         (uint16 moveNum - 1) * 2'u16
@@ -79,7 +79,8 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, stoneCountCon
 
     let movInt = movNumStr.parseInt()
     if movInt == 0: return (default(Game), newError("ply/move index starts at 1"))
-    let cur_ply = to_play_clr.getPlyFromMove(movInt, swap)
+    let cur_ply = to_play_clr.getPlyFromMove(movInt)
+
 
     if boardStr.len <= 0: return (default(Game), newError("Board segment is empty"))
 

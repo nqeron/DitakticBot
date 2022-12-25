@@ -1,7 +1,7 @@
-from board import Board, isSquareOutOfBounds, newBoard
+import board
 import tile
 from move import Square, Move, Direction, Spread, Place, nextInDir
-import std/sequtils, std/strformat
+import std/sequtils, std/strformat, std/math
 import ../util/error
 
 type 
@@ -66,20 +66,6 @@ proc getColorToPlay*(game: var Game): Color =
 proc `default`*(sz: uint8): StoneCounts =
     let (stones, caps) = sz.stones_for_size
     result = (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
-
-#[
-proc newGameR*(brd: Board, toPlay: Color, curPly: uint16, komi: int8, revPlies: uint8, swp: bool, stnCount: var StoneCounts): Game =
-    var g = Game(
-        board: brd,
-        to_play: toPlay,
-        ply: curPly,
-        stoneCounts: stnCount,
-        half_komi: komi,
-        reversible_plies: revPlies,
-        swap: swp
-    )
-    return g
-]#
 
 proc newGame*(size: uint8, komi: int8, swap: bool): Game =
     var stnCounts: StoneCounts = default(size)
@@ -207,3 +193,16 @@ proc play*(game: var Game, move: Move): Error =
     else:
         game.to_play = not game.to_play
     game.ply += 1
+
+proc getMove(game: Game): int =
+    echo game.ply
+
+    floorDiv(int game.ply, 2)
+
+proc toTps*(game: Game): string =
+    
+    let boardTPS = game.board.getTPSBoard()
+    let colorNum = game.to_play.numVal
+    let move = game.getMove()
+
+    result = &"{boardTPS} {colorNum} {move}"

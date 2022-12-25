@@ -20,10 +20,10 @@ if ?err:
 else:
     echo $game
     
-    let move = newMove(newSquare(1,1), Place.wall)
+    let move = newMove(newSquare(1,1), Place.flat)
     echo move
     err = game.play(move)
     if ?err:
         echo $err
     else:
-        echo game.stoneCounts
+        echo game.toTps
