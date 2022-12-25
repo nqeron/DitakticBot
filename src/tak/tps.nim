@@ -1,37 +1,8 @@
-from game import Game, stones_for_size
+import game as gm
 from board import Board, newBoard
 from tile import Tile, Piece, Color, isTileEmpty
 import std/strutils, std/sequtils, std/strformat
 import ../util/error
-
-type
-    CustomStones* = tuple[wStones: uint8, wCaps: uint8, bStones: uint8, bCaps: uint8]
-
-
-proc `dec`(customStones: var CustomStones, color: Color, piece: Piece): Error =
-    if  (color == white and piece == flat) or  (color == white and piece == wall):
-        if customStones.wStones == 0:
-            return newError("Can not subtract from no stones")
-        else:
-            customStones.wStones -= 1
-    elif color == white and piece == cap:
-        if customStones.wCaps == 0:
-            return newError("Can not subtract from no stones")
-        else:
-            customStones.wCaps -= 1
-    elif (color == black and piece == flat) or  (color == black and piece == wall):
-        if customStones.bStones == 0:
-            return newError("Can not subtract from no stones")
-        else:
-            customStones.bStones -= 1
-    elif color == black and piece == cap:
-        if customStones.bCaps == 0:
-            return newError("Can not subtract from no stones")
-        else:
-            customStones.bCaps -= 1
-
-    return default(Error)
-
 
 proc parseColor(val: char): (Color, Error) =
     case val:
@@ -83,27 +54,13 @@ proc parseTile(val: string): (Tile, Error) =
     return (Tile(piece: piece, stack: out_seq), default(Error))
 
 proc getPlyFromMove(color: Color, moveNum: int, swap: bool): uint16 =
-    if moveNum == 1:
-        if swap:
-            case color:
-            of Color.white:
-                1
-            of Color.black:
-                0
-        else:
-            case color:
-            of Color. white:
-                0
-            of Color.black:
-                1
-    else:
-        case color:
-        of Color.white:
-            moveNum * 2
-        of Color.black:
-            moveNum * 2 + 1
+    case color
+    of Color.white:
+        (uint16 moveNum - 1) * 2'u16
+    of Color.black:
+        (uint16 moveNum - 1) * 2'u16 + 1'u16
 
-proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, customStonesConst: CustomStones = default(CustomStones)): (Game, Error) =
+proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, stoneCountConst: StoneCounts = default(StoneCounts)): (Game, Error) =
     
     let segments = val.split(' ')
 
@@ -121,6 +78,7 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, customStonesC
         return (default(Game), err)
 
     let movInt = movNumStr.parseInt()
+    if movInt == 0: return (default(Game), newError("ply/move index starts at 1"))
     let cur_ply = to_play_clr.getPlyFromMove(movInt, swap)
 
     if boardStr.len <= 0: return (default(Game), newError("Board segment is empty"))
@@ -137,11 +95,11 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, customStonesC
 
     let (stones, caps) = stones_for_size( uint8 size )
  
-    var customStones =
-        if customStonesConst == default(CustomStones):
+    var  stoneCountsT: StoneCounts =
+        if stoneCountConst == default(StoneCounts):
             (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
         else:
-            customStonesConst
+            default(uint8 size)
         
     while colIdx < boardStringSeq.len:
 
@@ -178,11 +136,11 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, customStonesC
                 continue
 
             for clr in tileParsed.stack[0 ..< ^1]:
-                err = customStones.dec(clr, flat)
+                err = stoneCountsT.dec(clr, flat)
                 err.add(&"Error subtracting stones at col: {colIdx}, {rowIdx}")
                 if ?err: return (default(Game), err)
             
-            err = customStones.dec(tileParsed.stack[^1], tileParsed.piece)
+            err = stoneCountsT.dec(tileParsed.stack[^1], tileParsed.piece)
 
             err.add(&"Error subtracting top piece at col: {colIdx}, {rowIdx}")
             if ?err: return (default(Game), err)
@@ -192,7 +150,7 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, customStonesC
 
         colIdx += 1
 
-    var game = Game( board: boardB, to_play: to_play_clr, ply: cur_ply, white_stones: customStones.wStones, white_caps: customStones.wCaps, black_stones: customStones.bStones, black_caps: customStones.bCaps, half_komi: komi, reversible_plies: 0'u8, swap: swap)
+    var game = Game( board: boardB, to_play: to_play_clr, ply: cur_ply, stoneCounts: stoneCountsT, half_komi: komi, reversible_plies: 0'u8, swap: swap)
 
     return (game, default(Error))
             
