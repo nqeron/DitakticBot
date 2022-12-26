@@ -15,8 +15,34 @@ The aim of this work is to create an AI play tak with the following features:
 
  ### TO USE ###
 
- N/A - theoretically you could build some of my code, but it's not ready
+ ### Install ###
 
- ### Progress ##
+ I recommend installing Nim using choosenim here: https://github.com/dom96/choosenim
 
- At the moment, I can create a board with variable size, komi, and no-swap and make single plays on it. That's about it.
+ Note that nim is flagged by many antivirus softwares, so you may have to override that
+
+Eventually I would like to distribute exe and sh files so that installing nim is not needed.
+
+### Running ####
+
+`nimble run`
+runs the main program
+This will probably do better handling of user input soon
+
+If you want to customize your game, run `nimble debug` followed by running the exe/sh with parameters for size, komi, swap, starting tps
+
+### Progress ##
+
+You can play human v human games up to a move of 20
+
+There is no checking for victory or end game states
+
+Display back is in tps -- feel free to export to your viewer of choice!
+
+## On Tap ##
+
+- basic ai support:
+    - movegen implementation
+- github workflows
+- symmetries?
+- testing?
