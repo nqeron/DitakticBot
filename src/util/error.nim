@@ -1,5 +1,7 @@
 import std/strutils
 
+#Introduce ErrorKind?
+
 type
     Error* = tuple[fail: bool, trace: seq[string]]
 

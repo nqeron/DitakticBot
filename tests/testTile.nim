@@ -1,4 +1,4 @@
-import std/unittest, std/sequtils, std/strutils, std/sugar, std/strformat
+import std/unittest, std/sequtils, std/strutils, std/sugar
 
 import ../src/tak/tile
 import ../src/util/error

@@ -1,5 +1,4 @@
 import ../util/error
-import std/sequtils, std/strutils, std/sugar
 
 type
     Color* = enum

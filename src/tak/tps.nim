@@ -22,7 +22,7 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, stoneCountCon
 
     if color.len > 1: return (default(Game), newError("Color flag in TPS string is more than 1 char"))
 
-    var (to_play_clr, err) = parseColor(color[0])
+    var (to_play_clr, err) = parseColor(color)
 
     if ?err:
         err.add("Could not parse Color from TPS move section") 

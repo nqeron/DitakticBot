@@ -1,7 +1,7 @@
 from tile import Piece
 import ../util/error
 import regex
-import std/strformat, std/parseutils, std/strutils
+import std/strformat, std/parseutils, std/strutils, std/sequtils, std/sugar
 
 type
     PlayType* = enum
@@ -29,7 +29,7 @@ type
 proc `&`*[V: Move](x: string, mv: Move): string =
     x.add($mv)
 
-template newSpread(dir: Direction, pattSeq: seq[int]): MoveDetail =
+template newSpread*(dir: Direction, pattSeq: seq[int]): MoveDetail =
     MoveDetail(kind: spread, spreadVal: (direction: dir, pattern: pattSeq))
 
 template newSpread(dir: Direction, pattStr: string): MoveDetail =
@@ -42,7 +42,7 @@ template newSpread(dir: Direction, pattStr: string): MoveDetail =
 template newSquare*(r: int, col: int): Square =
     (row: r, column: col)
 
-template newPlace(placeDet: Place): MoveDetail =
+template newPlace*(placeDet: Place): MoveDetail =
     MoveDetail(kind: place, placeVal: placeDet)
 
 template newMove*(sq: Square, md: MoveDetail): Move =
@@ -50,6 +50,13 @@ template newMove*(sq: Square, md: MoveDetail): Move =
 
 # proc defaultMove(): Move[Pl =
 #     return (square: newSquare(0,0), movekind: default(Place))
+
+proc `$`(direction: Direction): string =
+    case direction:
+    of up: "+"
+    of down: "-"
+    of left: "<"
+    of right: ">"
     
 
 proc toColNum(colStr: string): (int, Error) =
@@ -136,6 +143,8 @@ proc parseMove*(moveString: string, boardSize: int): (PlayType, Move, Error) =
         return (default(PlayType), defMove, dirErr)
     captIdx += 1
 
+    if stackAmt == 0: stackAmt = 1
+
     if capts[captIdx] == "": return (move, newMove(newSquare(row, col), newSpread(direction, @[stackAmt])), default(Error))
 
     return (move, newMove(newSquare(row, col), newSpread(direction, capts[captIdx])), default(Error))
@@ -153,3 +162,48 @@ proc nextInDir*(square: Square, direction: Direction): Square =
     of right:
         (row: square.row + 1, column: square.column)
 
+proc ptnVal(square: Square, size: int): string =
+    if square.row >= size or square.column >= size: return ""
+    let colPTN = 
+        case square.column
+        of 0: "a"
+        of 1: "b"
+        of 2: "c"
+        of 3: "d"
+        of 4: "e"
+        of 5: "f"
+        of 6: "g"
+        of 7: "h"
+        else: ""
+    
+    if colPTN == "": return ""
+    let rowPTN = $(size - square.row)
+
+    return &"{colPTN}{rowPTN}"
+
+proc ptnVal*(place: Place, expanded = false): string =
+    case place
+    of flat:
+        if expanded: "F" 
+        else: ""
+    of wall: "S"
+    of cap: "C"
+
+
+
+proc ptnVal*(move: Move, size: int, expanded: bool = false): string =
+    case move.movedetail.kind
+    of place:
+        move.movedetail.placeVal.ptnVal(expanded) & move.square.ptnVal(size)
+    of spread:
+        let spread = move.movedetail.spreadVal
+        var stackAmt = 0
+        var pattStr = ""
+        
+        if spread.pattern.len > 0:
+            stackAmt = foldl(spread.pattern, a + b, 0)
+            pattStr = if expanded and spread.pattern.len == 1: $spread.pattern[0] elif spread.pattern.len == 1: "" else: spread.pattern.map((it) => $it).join("")
+
+        let stackAmtStr = if expanded or stackAmt > 1: $stackAmt else: ""
+
+        return  &"{stackAmtStr}{move.square.ptnVal(size)}{$spread.direction}{pattStr}"
