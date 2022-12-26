@@ -1,6 +1,6 @@
 import board
 import tile
-from move import Square, Move, Direction, Spread, Place, nextInDir
+import move
 import std/sequtils, std/strformat, std/math
 import ../util/error
 
@@ -67,7 +67,9 @@ proc `default`*(sz: uint8): StoneCounts =
     let (stones, caps) = sz.stones_for_size
     result = (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
 
-proc newGame*(size: uint8, komi: int8, swap: bool): Game =
+proc newGame*(size: uint8, komi: int8, swap: bool): (Game, Error) =
+    if size < 3 or size > 8: return (default(Game), newError("Game size not supported"))
+
     var stnCounts: StoneCounts = default(size)
     var board = newBoard(int size)
     var addr_out = Game(
@@ -79,7 +81,7 @@ proc newGame*(size: uint8, komi: int8, swap: bool): Game =
         reversible_plies: 0'u8,
         swap: swap
     )
-    return addr_out
+    return (addr_out, default(Error))
 
 proc `[]`*(game: var Game, square: Square): Tile =
     result = game.board[square.row][square.column]
@@ -168,36 +170,37 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     #drop one by one onto square in direction
     return default(Error)
 
-proc executeMove(self: var Game, move: Move[Place]): Error =
+proc executeMove(self: var Game, square: Square, place: Place): Error =
 
-    if self.ply < 2 and move.movekind != flat: return newError("Must place a flat on the first turn!")
+    if self.ply < 2 and place != flat: return newError("Must place a flat on the first turn!")
 
-    var err = self.executePlace(move.square, move.movekind)
+    var err = self.executePlace(square, place)
     
     return err
 
-proc executeMove (self: var Game, move: Move[Spread]): Error =
-    let spread = move.movekind
-    var err = self.executeSpread(move.square, spread.direction, spread.pattern)
+proc executeMove (self: var Game, square: Square, spread: Spread): Error =
+    var err = self.executeSpread(square, spread.direction, spread.pattern)
     if ?err:
         err.add("Error executing spread")
         return err
+
+proc executeMove(game: var Game, move: Move): Error =
+    case move.movedetail.kind:
+    of place:
+        game.executeMove(move.square, move.movedetail.placeVal)
+    of spread:
+        game.executeMove(move.square, move.movedetail.spreadVal)
 
 proc play*(game: var Game, move: Move): Error =  
     var err = game.executeMove(move)
     if ?err: 
         err.add( &"Error executing move: {move}")
         return err
-    if game.swap:
-        if game.ply != 1: game.to_play = not game.to_play
-    else:
-        game.to_play = not game.to_play
+    game.to_play = not game.to_play
     game.ply += 1
 
 proc getMove(game: Game): int =
-    echo game.ply
-
-    floorDiv(int game.ply, 2)
+    floorDiv(int game.ply, 2) + 1
 
 proc toTps*(game: Game): string =
     
