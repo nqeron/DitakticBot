@@ -1,5 +1,8 @@
 # DitakticBot #
 
+![](https://img.shields.io/github/license/nqeron/DitakticBot) ![](https://img.shields.io/github/workflow/status/nqeron/DitakticBot/Actions)
+
+
 ## THIS IS A WORK IN PROGRESSS ##
 
 The aim of this work is to create an AI play tak with the following features:
