@@ -1,7 +1,8 @@
 on:
+  push:
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
       
 jobs:
 
@@ -12,4 +13,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: iffy/install-nim@v4.5.0
-      - run: nimble test
+      - run: nimble build
