@@ -1,57 +1,8 @@
 import game as gm
 from board import Board, newBoard
-from tile import Tile, Piece, Color, isTileEmpty
+import tile
 import std/strutils, std/sequtils, std/strformat
 import ../util/error
-
-proc parseColor(val: char): (Color, Error) =
-    case val:
-    of '1': result = (Color.white, default(Error))
-    of '2': result = (Color.black, default(Error))
-    else: result = (default(Color), newError("Color must be 1 or 2") )
-
-proc parsePiece(val: char): (Piece, Color, Error) =
-    case val:
-    of 'S': result = (Piece.wall, default(Color), default(Error))
-    of 'C': result = (Piece.cap, default(Color), default(Error))
-    else:
-        var (clr, err) = val.parseColor
-        err.add("Piece is not valid")
-        result = (Piece.flat, clr, err)
-
-proc parseTile(val: string): (Tile, Error) =
-    if val == "x":
-        return (default(Tile), default(Error))
-    if val.len <= 0:
-        return (default(Tile), newError("Tile is missing"))
-
-    if val.len == 1:
-        var (piece, clr, err) = val[0].parsePiece
-        if ?err: 
-            err.add("Tile could not parse single piece")
-            return (default(Tile), err)
-
-        return (Tile(piece: piece, stack: @[clr]), default(Error))
-
-    var out_seq: seq[Color]
-    for c in val[0 ..< ^1]:
-        var (clr, err) = parseColor(c)
-        if ?err: 
-            err.add("Error parsing piece in stack")
-            return (default(Tile), err)
-
-        out_seq.add(clr)
-
-    var (piece, clr, err) = val[^1].parsePiece
-
-    if ?err: 
-        err.add("Error parsing top piece")
-        return (default(Tile), err)
-
-    if piece == Piece.flat:
-        out_seq.add(clr)
-
-    return (Tile(piece: piece, stack: out_seq), default(Error))
 
 proc getPlyFromMove(color: Color, moveNum: int): uint16 =
     case color
@@ -71,7 +22,7 @@ proc parseGame*(val: string, swap: bool = true, komi: int8 = 0'i8, stoneCountCon
 
     if color.len > 1: return (default(Game), newError("Color flag in TPS string is more than 1 char"))
 
-    var (to_play_clr, err) = parseColor(color[0])
+    var (to_play_clr, err) = parseColor(color)
 
     if ?err:
         err.add("Could not parse Color from TPS move section") 

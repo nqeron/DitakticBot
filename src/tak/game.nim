@@ -67,7 +67,7 @@ proc `default`*(sz: uint8): StoneCounts =
     let (stones, caps) = sz.stones_for_size
     result = (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
 
-proc newGame*(size: uint8, komi: int8, swap: bool): (Game, Error) =
+proc newGame*(size: uint8 = 6'u8, komi: int8 = 2'i8, swap: bool = true): (Game, Error) =
     if size < 3 or size > 8: return (default(Game), newError("Game size not supported"))
 
     var stnCounts: StoneCounts = default(size)

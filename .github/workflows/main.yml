@@ -1,16 +1,15 @@
 on:
-  push:
+  pull:
     branches:
       - main
       
 jobs:
 
-  build_debug_windows:
-    name: build debug for windows
+  testBuild:
+    name: test build
     runs-on: windows-latest
     
     steps:
       - uses: actions/checkout@v3
       - uses: iffy/install-nim@v4.5.0
-      - run: nimble debug
-      - uses: stefanzweifel/git-auto-commit-action@v4
+      - run: nimble test

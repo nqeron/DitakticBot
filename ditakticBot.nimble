@@ -30,5 +30,3 @@ task release, "Build release":
        else: 
            when defined(macosx): "bin/release/osx" 
            else: "bin/release/other"
-
-   exec "nimble build -d:release"
