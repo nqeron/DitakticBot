@@ -17,27 +17,41 @@ type
         reversible_plies*: uint8
         swap*: bool
 
-proc `dec`*(StoneCounts: var StoneCounts, color: Color, piece: Piece): Error =
+proc getFlats*(stoneCounts: StoneCounts, color: Color): uint8 =
+    case color
+    of white:
+        return stoneCounts.wStones
+    of black:
+        return stoneCounts.bStones
+
+proc getCaps*(stoneCounts: StoneCounts, color: Color): uint8 =
+    case color
+    of white:
+        return stoneCounts.wCaps
+    of black:
+        return stoneCounts.bCaps
+
+proc `dec`*(stoneCounts: var StoneCounts, color: Color, piece: Piece): Error =
     if  (color == white and piece == flat) or  (color == white and piece == wall):
-        if StoneCounts.wStones == 0:
+        if stoneCounts.wStones == 0:
             return newError("Can not subtract from no stones")
         else:
-            StoneCounts.wStones -= 1
+            stoneCounts.wStones -= 1
     elif color == white and piece == cap:
-        if StoneCounts.wCaps == 0:
+        if stoneCounts.wCaps == 0:
             return newError("Can not subtract from no stones")
         else:
-            StoneCounts.wCaps -= 1
+            stoneCounts.wCaps -= 1
     elif (color == black and piece == flat) or  (color == black and piece == wall):
-        if StoneCounts.bStones == 0:
+        if stoneCounts.bStones == 0:
             return newError("Can not subtract from no stones")
         else:
-            StoneCounts.bStones -= 1
+            stoneCounts.bStones -= 1
     elif color == black and piece == cap:
-        if StoneCounts.bCaps == 0:
+        if stoneCounts.bCaps == 0:
             return newError("Can not subtract from no stones")
         else:
-            StoneCounts.bCaps -= 1
+            stoneCounts.bCaps -= 1
 
     return default(Error)
 
@@ -58,7 +72,7 @@ proc stones_for_size*(sz: uint8): (uint8, uint8) =
         result = (stones: 50'u8, capstones: 2'u8)
     else: result = (stones: 0'u8, capstones: 0'u8)
 
-proc getColorToPlay*(game: var Game): Color =
+proc getColorToPlay*(game: Game): Color =
     result = game.to_play
     if (game.swap and game.ply < 2):
         result = not result
@@ -83,7 +97,7 @@ proc newGame*(size: uint8 = 6'u8, komi: int8 = 2'i8, swap: bool = true): (Game, 
     )
     return (addr_out, default(Error))
 
-proc `[]`*(game: var Game, square: Square): Tile =
+proc `[]`*(game: Game, square: Square): Tile =
     result = game.board[square.row][square.column]
 
 proc `[]=`*(game: var Game, square: Square, tile: Tile) {. inline .} =
@@ -121,16 +135,16 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     let count = pattern.len
     case direction:
     of up:
-        if square.column + count >= game.board.len:
-            return newError("Spread moves past bound of board")
-    of down:
-        if square.column - count < 0:
-            return newError("Spread moves past bound of board")
-    of left:
         if square.row - count < 0:
             return newError("Spread moves past bound of board")
+    of down:
+        if square.row + count >= game.board.len:
+            return newError("Spread moves past bound of board")
+    of left:
+        if square.column - count < 0:
+            return newError("Spread moves past bound of board")
     of right:
-        if square.row + count > game.board.len:
+        if square.column + count >= game.board.len:
             return newError("Spread moves past bound of board")
 
     let numPieces = foldl(pattern, a + b)
@@ -142,7 +156,7 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     
     var toDrop = tile.stack[^numPieces..^1]
 
-    game[square] = if numPieces == len(tile.stack): default(Tile) else: Tile(piece: tile.piece, stack: tile.stack[0 ..< ^numPieces])
+    game[square] = if numPieces == len(tile.stack): default(Tile) else: Tile(piece: flat, stack: tile.stack[0 ..< ^numPieces])
 
     var pattern_idx = 0
 
@@ -209,3 +223,28 @@ proc toTps*(game: Game): string =
     let move = game.getMove()
 
     result = &"{boardTPS} {colorNum} {move}"
+
+proc fromPTNMoves*(moves: openArray[string], size: uint8, komi: int8 = 0'i8, swap: bool = true): (Game, Error) =
+    var (game, error) = newGame(size, komi, swap)
+    
+    if ?error:
+        error.add("Unable to create new game")
+        return (default(Game), error)
+
+    for moveStr in moves:
+        var (playtype, move, err) = parseMove(moveStr, int size)
+
+        echo moveStr, move, ?err, $err
+        if ?err:
+            err.add("Unable to parse move")
+            return (default(Game), err)
+
+        if playtype != PlayType.move: return (default(Game), newError("Playtype is not a move"))
+
+        err = game.play(move)
+        echo game.toTps
+        echo ?err, $err
+        if ?err:
+            err.add("Invalid move!")
+            return (default(Game), err)
+    return (game, default(Error))

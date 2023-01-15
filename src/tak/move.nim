@@ -154,13 +154,13 @@ proc parseMove*(moveString: string, boardSize: int): (PlayType, Move, Error) =
 proc nextInDir*(square: Square, direction: Direction): Square =
     case direction:
     of up:
-        (row: square.row, column: square.column + 1)
-    of down:
-        (row: square.row, column: square.column - 1)
-    of left:
         (row: square.row - 1, column: square.column)
-    of right:
+    of down:
         (row: square.row + 1, column: square.column)
+    of left:
+        (row: square.row, column: square.column - 1)
+    of right:
+        (row: square.row, column: square.column + 1)
 
 proc ptnVal(square: Square, size: int): string =
     if square.row >= size or square.column >= size: return ""

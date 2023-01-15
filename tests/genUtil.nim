@@ -5,3 +5,6 @@ template checkEqAll*[F,T]( toCheck: openArray[(F, T)], transform: (frm: F) -> T)
 
 template checkRoundTripAll*(toCheck: openArray[string], rTrip: (frm: string) -> bool) =
     check ( foldl( mapIt(toCheck, rTrip(it)), a and b, true) )
+
+template checkFuncAll*[F](toCheck: openArray[F], transform: (frm: F) -> bool) =
+    check( foldl( mapIt(toCheck, transform(it), a and b, true)))

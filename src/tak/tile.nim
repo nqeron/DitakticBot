@@ -11,6 +11,9 @@ type
         piece*: Piece
         stack*: seq[Color]
 
+proc `len`*(tile: Tile): int =
+    len(tile.stack)
+
 proc parseColor*(val: string): (Color, Error) =
     case val:
     of "1": result = (Color.white, default(Error))
