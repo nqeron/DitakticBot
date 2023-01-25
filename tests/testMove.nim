@@ -1,4 +1,4 @@
-import std/unittest, std/sequtils, std/strutils, std/strformat, std/sugar
+import std/unittest, std/sequtils
 import ../src/tak/move as mv, ../src/tak/game, ../src/tak/tps
 import ../src/util/error 
 

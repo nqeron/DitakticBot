@@ -32,7 +32,7 @@ proc addSpreads(moves: var seq[Move], game: Game, square: Square) =
                 if spread.hand == 0:
                     moves.add(newMove(square, newSpread(direction, spread.drops)))
                     continue
-                let nextSquare = square.nextInDir(direction)
+                let nextSquare = spread.square.nextInDir(direction)
                 if game.board.isSquareOutOfBounds(nextSquare):
                     continue
                 let nextTile = game[nextSquare]
@@ -53,7 +53,7 @@ proc addSpreads(moves: var seq[Move], game: Game, square: Square) =
 
 
 
-proc possibleMoves(game: Game): seq[Move] =
+proc possibleMoves*(game: Game): seq[Move] =
     result = @[]
 
     # if game.ply < 2:
@@ -61,8 +61,8 @@ proc possibleMoves(game: Game): seq[Move] =
 
     let size = len(game.board)
 
-    for col in 0..size:
-        for row in 0..size:
+    for col in 0..<size:
+        for row in 0..<size:
             let square = newSquare(row, col)
             let tile: Tile = game[square]
             

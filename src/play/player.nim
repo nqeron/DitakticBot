@@ -2,6 +2,7 @@ import ../tak/game as gm
 import ../tak/move as mv
 import ../util/error
 import std/strformat
+#import ../ai/bot
 
 type
     Actor* = enum

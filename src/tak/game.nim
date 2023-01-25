@@ -31,6 +31,9 @@ proc getCaps*(stoneCounts: StoneCounts, color: Color): uint8 =
     of black:
         return stoneCounts.bCaps
 
+proc getTotalStones*(stoneCounts: StoneCounts, color: Color): uint8 =
+    return stoneCounts.getFlats(color) + stoneCounts.getCaps(color)
+
 proc `dec`*(stoneCounts: var StoneCounts, color: Color, piece: Piece): Error =
     if  (color == white and piece == flat) or  (color == white and piece == wall):
         if stoneCounts.wStones == 0:
@@ -121,6 +124,7 @@ proc executePlace(game: var Game, square: Square, piece: Piece): Error =
     return default(Error)
 
 proc executeSpread(game: var Game, square: Square, direction: Direction, pattern: seq[int]): Error =
+    #echo "executing spread: ", square, " ", direction, " ", pattern
     let color = game.to_play
     
     if game.board.isSquareOutOfBounds(square):
@@ -133,6 +137,7 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
         return newError("Top tile does not belong to player")
 
     let count = pattern.len
+    #echo &"count: {count}"
     case direction:
     of up:
         if square.row - count < 0:
@@ -148,14 +153,14 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
             return newError("Spread moves past bound of board")
 
     let numPieces = foldl(pattern, a + b)
-    
+    #echo &"numPieces: {numPieces}"
     if tile.stack.len < numPieces:
         return newError("number of pieces in move exceeds number of pieces in stack")
 
     let origBoardState = game
     
     var toDrop = tile.stack[^numPieces..^1]
-
+    #echo &"toDrop: {toDrop}"
     game[square] = if numPieces == len(tile.stack): default(Tile) else: Tile(piece: flat, stack: tile.stack[0 ..< ^numPieces])
 
     var pattern_idx = 0
@@ -177,8 +182,10 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
                                 if pattern_idx == (len(pattern) - 1): tile.piece else: flat)
         
         toDrop = toDrop[pattern[pattern_idx]..^1]
+        
         nextSquare = nextSquare.nextInDir(direction)
         pattern_idx += 1
+        
 
     #take top pieces - sum of pattern
     #drop one by one onto square in direction
@@ -203,6 +210,7 @@ proc executeMove(game: var Game, move: Move): Error =
     of place:
         game.executeMove(move.square, move.movedetail.placeVal)
     of spread:
+        #echo "executing spread"
         game.executeMove(move.square, move.movedetail.spreadVal)
 
 proc play*(game: var Game, move: Move): Error =  
@@ -248,3 +256,74 @@ proc fromPTNMoves*(moves: openArray[string], size: uint8, komi: int8 = 0'i8, swa
             err.add("Invalid move!")
             return (default(Game), err)
     return (game, default(Error))
+
+# # in a 2d array of 1s and 0s check if there is a path from left to right or top to bottom, but not left or right to bottom and not left or right to top
+# proc checkTak*( game: Game, color: Color): bool =
+#     let board = game.board
+#     var visited: seq[seq[(bool, bool)]] = newSeq[seq[(bool, bool)]](board.len)
+#     for i in 0 ..< board.len:
+#         visited[i] = newSeq[(bool, bool)](board.len)
+    
+#     var queue: seq[Square] = @[]
+#     var leftEdge = false
+#     var topEdge = false
+#     for i in 0 ..< board.len:
+#         if  game.board[i][0].topColorEq(color):
+#             queue.add(newSquare(i, 0))
+#             visited[i][0] = (true, false)
+#         if  board[0][i].topColorEq(color):
+#             queue.add(newSquare(0, i))
+#             visited[0][i] = (false, true)
+
+#     while queue.len > 0:
+#         let square = queue.pop()
+#         if board[square.row][square.column].topColorEq(color) and ((visited[square.row][square.column][1] and square.row == board.len - 1) or (visited[square.row][square.column][0] and square.column == board.len - 1)):
+#             return true
+#         for dir in [up, down, left, right]:
+#             let nextSquare = square.nextInDir(dir)
+#             if nextSquare.row >= 0 and nextSquare.row < board.len and nextSquare.column >= 0 and nextSquare.column < board.len:
+#                 if board[nextSquare.row][nextSquare.column].topColorEq(color):
+#                     if not (visited[nextSquare.row][nextSquare.column][0] and visited[nextSquare.row][nextSquare.column][1]):
+#                         queue.add(nextSquare)
+#                         visited[nextSquare.row][nextSquare.column] = (visited[square.row][square.column][0] or visited[nextSquare.row][nextSquare.collumn][0], visited[square.row][square.column][1] or )
+
+#     return false
+
+# in a Game, check if a player has more flats than the other player - returns win, winner, tie
+proc checkFlatWin*(game: Game): (bool, Color, bool) =
+    let reserves = game.stoneCounts
+    
+    let board = game.board
+    var wCount, bCount = 0
+    for i in 0 ..< board.len:
+        for j in 0 ..< board.len:
+            if not board[i][j].isTileEmpty and board[i][j].topTile.piece == flat:
+                if board[i][j].topTile.color == white:
+                    wCount += 1
+                else:
+                    bCount += 1
+
+    if wCount + bCount > board.len * board.len:
+        if wCount == bCount + game.half_komi:
+            return (true, default(Color), true)
+        return (true, if wCount > bCount + game.half_komi: white else: black, false)
+
+    if reserves.getTotalStones(white) > 0 or reserves.getTotalStones(black) > 0:
+        return (false, default(Color), false)
+
+    if wCount > bCount + game.half_komi:
+        return (true, white, false)
+    elif bCount + game.half_komi > wCount:
+        return (true, black, false)
+    else:
+        return (true, default(Color), true)
+
+proc isOver*(game: Game): bool =
+    let (flatWin, winner, tie) = game.checkFlatWin()
+    if flatWin:
+        return true
+    # if game.checkTak(game.to_play):
+    #     return true
+    # if game.checkTak(not game.to_play):
+    #     return true
+    return false

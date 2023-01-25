@@ -78,9 +78,6 @@ proc topTile*(self: Tile): tuple[piece: Piece, color: Color] =
         return (self.piece, self.stack[^1])
 
 proc add*(tile: Tile, to_add: seq[Color], piece: Piece): Tile =
-
-    if tile.stack == @[]:
-        return default(Tile)
   
     if to_add == @[]:
         return Tile(piece: tile.piece, stack: tile.stack)
@@ -93,3 +90,8 @@ proc `not`*(clr: Color): Color =
     case clr
     of white: return black
     of black: return white
+
+proc topColorEq*(tile: Tile, color: Color): bool =
+    if tile.isTileEmpty:
+        return false
+    return tile.stack[^1] == color

@@ -136,6 +136,15 @@ suite "complicated state":
         let (toTps, err) = checkPtnMoves(moves)
         check( not ?err )
         check(toTps == tps)
+
+# suite "Check Tak":
+
+#     test "check taks":
+#         let tps = "x6/x2,2,x3/2S,x,2,x3/1212121C,2,2C,2,2,x/1,1,x,2,1,x/2S,1,x,121,x,1 2 17"
+
+#         let (game, err) = parseGame(tps)
+#         check( not ?err )
+#         check(game.checkTak)
     
     # test "valid moves from parsed game":
     #     var (game, err) = parseGame("2,2,x,1,1112S,1/1,2,221C,211,12,2/x,21S,2112C,2,1,1/x,2,2,1,2,2S/x,2,21S,x,1212S,1/1,1S,2,x,1,1 1 34")
