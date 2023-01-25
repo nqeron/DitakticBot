@@ -1,13 +1,16 @@
-import std/bitops
+import std/bitops, strformat
 from move import Direction
 
 type
     Bitmap*[N: static uint] = uint64
-    GroupIter*[N: static uint] = object
-        seeds: Bitmap[N]
-        bitmap: Bitmap[N]
-    BitIter*[N: static uint] = object
-        bitmap: Bitmap[N]
+    GroupIter*[F: static uint] = object
+        seeds: Bitmap[F]
+        bitmap: Bitmap[F]
+    BitIter*[Z: static uint] = object
+        bitmap: Bitmap[Z]
+
+# proc newGroupIter*[N: static uint](seeds: Bitmap[N], bitmap: Bitmap[N]): GroupIter[N] =
+#     GroupIter[N](seeds: seeds, bitmap: bitmap)
 
 proc set*(bitmap: var Bitmap, x: uint, y: uint)  =
     assert(x < bitmap.N)
@@ -48,9 +51,9 @@ proc edgeMask*(size: static uint): array[4, Bitmap[size]] =
 
     return [
         Bitmap[size](edgeMasks[size][ord(up)]),
-        Bitmap[size](edgeMasks[size][ord(left)]),
-        Bitmap[size](edgeMasks[size][ord(down)]),
         Bitmap[size](edgeMasks[size][ord(right)]),
+        Bitmap[size](edgeMasks[size][ord(down)]),
+        Bitmap[size](edgeMasks[size][ord(left)]),
     ]
 
 proc boardMask*(size: static uint): Bitmap[size] =
@@ -69,80 +72,92 @@ proc boardMask*(size: static uint): Bitmap[size] =
 
 proc dilate*(bitmap: Bitmap): Bitmap =
     var dilation = bitmap
-    dilation = dilation.bitor( (bitmap shl 1).bitand( (bitnot edgeMask(bitmap.N)[ord(left)]).bitand(boardMask(bitmap.N))))
-    dilation = dilation.bitor( (bitmap shr 1).bitand( bitnot edgeMask(bitmap.N)[ord(right)]))
-    dilation = dilation.bitor( (bitmap shl bitmap.N).bitand(boardMask(bitmap.N)))
-    dilation = dilation.bitor(bitmap shr bitmap.N)
+
+    dilation = dilation.bitor((bitmap shl 1).bitand(edgeMask(bitmap.N)[ord(right)].bitnot).bitand(boardMask(bitmap.N)))
+    dilation = dilation.bitor((bitmap shr 1).bitand(edgeMask(bitmap.N)[ord(left)].bitnot))
+    dilation = dilation.bitor((bitmap shl bitmap.N).bitand(boardMask(bitmap.N)))
+    dilation = dilation.bitor((bitmap shr bitmap.N))
 
     return dilation
 
 proc floodFill*(bitmap: Bitmap, mask: Bitmap): Bitmap =
-    var seed = bitmap bitand mask
+    var seed = bitmap.bitand(mask)
 
     while true:
-        let next = seed.dilate() bitand mask
+        let next: uint64 = (uint64 seed).dilate().bitand(uint64 mask)
         if next == seed:
             return seed
         seed = next
 
     return seed
 
-proc groups*[N](bitmap: Bitmap[N]): GroupIter[N] =
-    (bitmap, bitmap)
+proc groups*[N: static uint](btmap: Bitmap[N]): GroupIter[N]  =
+    GroupIter[N](seeds: btmap, bitmap: btmap)
 
 proc groupsFrom*[N](bitmap: Bitmap[N], seeds: Bitmap[N]): GroupIter[N] =
-    assert(seeds bitand bitnot self == 0.into(), "provided seeds are not a subset of the bitmap")
+    assert(seeds.bitand(bitnot self) == 0'u64, "provided seeds are not a subset of the bitmap")
     
     (seeds, bitmap)
 
-proc width*[N](bitmap: Bitmap[N]): uint =
-    var rowMask = edgeMask[N]()[up]
+proc width*[N: static uint](bitmap: Bitmap[N]): uint =
+    var rowMask = edgeMask(N)[ord(up)]
     var rowAggregate = default(Bitmap[N])
     for i in 0 ..< N:
-        let row = bitmap bitand rowMask
-        rowAggregate = rowAggregate bitor (row shl (i * N))
+        let row = bitmap.bitand(rowMask)
+        rowAggregate = rowAggregate.bitor(row shl (i * N))
         rowMask = rowMask shr N
     
     return uint rowAggregate.countSetBits()
 
-proc height*[N](bitmap: Bitmap[N]): uint =
-    var colMask = edgeMask[N]()[left]
+proc height*[N: static uint](bitmap: Bitmap[N]): uint =
+    var colMask = edgeMask(N)[ord(left)]
     var colAggregate = default(Bitmap[N])
     for i in 0 ..< N:
-        let col = bitmap bitand colMask
-        colAggregate = colAggregate bitor (col shl i)
+        let col = bitmap.bitand(colMask)
+        colAggregate = colAggregate.bitor(col shl i)
         colMask = colMask shr 1
     
     return uint colAggregate.countSetBits()
 
 proc lowestBit*[N](bitmap: Bitmap[N]): Bitmap[N] =
-    let remainder = bitmap bitand (bitmap - 1)
-    return bitmap bitand bitnot remainder
+    let remainder = bitmap.bitand(bitmap - 1)
+    return bitmap.bitand(bitnot remainder)
 
-proc `$`*[N](bitmap: Bitmap[N]): string =
+# proc `$`*[N: static uint](bitmap: Bitmap[N]): string =
     
-    let rowMask = 0xFFFFFFFFFFFFFFFF shr (64 - N)
-    let columnMask = 1
-    var result = ""
-    for y in 0 ..< N:
-        if y > 1: result.add("/")
-        let row = (bitmap shr (N * N - y * N)) bitand rowMask
-        for x in 0 ..< N:
-            let column = (row shr (N - x)) bitand columnMask
-            result.add(&"{column}")
-    return result
+#     let rowMask = 0xFFFFFFFFFFFFFFFF shr (64 - N)
+#     let columnMask = 1
+#     var result = ""
+#     for y in 0 ..< N:
+#         if y > 1: result.add("/")
+#         let row = (bitmap shr (N * N - y * N)).bitand(rowMask)
+#         for x in 0 ..< N:
+#             let column = (row shr (N - x)).bitand(columnMask)
+#             echo "column: ", column
+#             result.add(&"{column}")
+#     return result
 
-iterator nextGroup*[N](iter: var GroupIter[N]): Bitmap[N] =
-    while iter.seeds != 0.into():
-        let seed = iter.seeds.lowestBit()
-        let group = floodFill(seed, iter.bitmap)
-        iter.seeds = iter.seeds bitand bitnot group
-        iter.bitmap = iter.bitmap bitand bitnot group
-        yield group
+proc bits*[Z: static uint](btmap: Bitmap[Z]): BitIter[Z] =
+    BitIter[Z](bitmap: btmap)
 
-iterator nextBit*[N](iter: var BitIter[N]): Bitmap[N] =
-    while iter.bitmap != 0.into():
-        let remainder = iter.bitmap bitand (iter.bitmap - 1)
-        let bit = iter.bitmap bitand bitnot remainder
-        iter.bitmap = remainder
-        yield bit
+proc nextGroup*[F: static uint](iterStart: GroupIter[F]): iterator(): Bitmap[F] =
+    return iterator(): Bitmap[F] =
+        var iter = iterStart
+        while iter.seeds != 0'u64:
+            let seed = iter.seeds.lowestBit()
+            echo fmt"seed: `{seed:#b}`"
+            echo fmt"iter.bitmap: `{iter.bitmap:#b}`"
+            let group = floodFill(seed, Bitmap[F](iter.bitmap))
+            iter.seeds = iter.seeds.bitand( bitnot group )
+            iter.bitmap = iter.bitmap.bitand( bitnot group )
+            echo fmt"group: `{group:#b}`"
+            yield Bitmap[iter.F](group)
+
+proc nextBit*[Z: static uint](iterStart: BitIter[Z]): iterator(): Bitmap[Z] =
+    return iterator(): Bitmap[Z] =
+        var iter = iterStart
+        while iter.bitmap != 0'u64:
+            let remainder = iter.bitmap.bitand(iter.bitmap - 1)
+            let bit = iter.bitmap.bitand(bitnot remainder)
+            iter.bitmap = remainder
+            yield bit
