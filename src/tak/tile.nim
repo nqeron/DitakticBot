@@ -2,10 +2,10 @@ import ../util/error
 
 type
     Color* = enum
-        white, black
+        white = 0x01, black = 0x02
 
     Piece* = enum
-        flat, wall, cap
+        flat = 0x10, wall = 0x20, cap = 0x40
 
     Tile* = object 
         piece*: Piece
@@ -95,3 +95,8 @@ proc topColorEq*(tile: Tile, color: Color): bool =
     if tile.isTileEmpty:
         return false
     return tile.stack[^1] == color
+
+# proc getHashRepr(tile: Tile): (uint8, uint8) =
+#     if !tile.isTileEmpty:
+#         let mask = 0xFF'u8 shr (8 - min(8,len(tile.stack)))
+#         let stackSegment = 

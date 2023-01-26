@@ -1,6 +1,7 @@
 import board
 import tile
 import move
+import metadata
 import std/sequtils, std/strformat, std/math
 import ../util/error
 
@@ -8,14 +9,14 @@ type
 
     StoneCounts* = tuple[wStones: uint8, wCaps: uint8, bStones: uint8, bCaps: uint8]
 
-    Game* = object 
-        board*: Board
+    Game*[N: static uint] = object 
+        board*: Board[N]
         to_play*: Color
         ply*: uint16
         stoneCounts*: StoneCounts
         half_komi*: int8
-        reversible_plies*: uint8
         swap*: bool
+        meta*: Metadata[N]
 
 proc getFlats*(stoneCounts: StoneCounts, color: Color): uint8 =
     case color
@@ -84,18 +85,17 @@ proc `default`*(sz: uint8): StoneCounts =
     let (stones, caps) = sz.stones_for_size
     result = (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
 
-proc newGame*(size: uint8 = 6'u8, komi: int8 = 2'i8, swap: bool = true): (Game, Error) =
-    if size < 3 or size > 8: return (default(Game), newError("Game size not supported"))
+proc newGame*(size: static uint8 = 6'u8, komi: int8 = 2'i8, swap: bool = true): (Game[size], Error) =
+    if size < 3 or size > 8: return (default(Game[size]), newError("Game size not supported"))
 
     var stnCounts: StoneCounts = default(size)
-    var board = newBoard(int size)
-    var addr_out = Game(
-        board: board,
+    var brd = newBoard(size)
+    var addr_out = Game[size](
+        board: brd,
         to_play: white,
         ply: 0,
         stoneCounts: stnCounts,
         half_komi: komi,
-        reversible_plies: 0'u8,
         swap: swap
     )
     return (addr_out, default(Error))
@@ -120,6 +120,7 @@ proc executePlace(game: var Game, square: Square, piece: Piece): Error =
     if not game[square].isTileEmpty: return newError("Cannot place piece in on square with existing pieces") #check if tile is empty
         
     game[square] = Tile(piece: piece, stack: @[color])
+    #game.metadata.placePiece(piece, square)
 
     return default(Error)
 
@@ -140,16 +141,16 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     #echo &"count: {count}"
     case direction:
     of up:
-        if square.row - count < 0:
+        if (int square.row) - count < 0:
             return newError("Spread moves past bound of board")
     of down:
-        if square.row + count >= game.board.len:
+        if (int square.row) + count >= game.board.len:
             return newError("Spread moves past bound of board")
     of left:
-        if square.column - count < 0:
+        if (int square.column) - count < 0:
             return newError("Spread moves past bound of board")
     of right:
-        if square.column + count >= game.board.len:
+        if (int square.column) + count >= game.board.len:
             return newError("Spread moves past bound of board")
 
     let numPieces = foldl(pattern, a + b)
@@ -232,29 +233,29 @@ proc toTps*(game: Game): string =
 
     result = &"{boardTPS} {colorNum} {move}"
 
-proc fromPTNMoves*(moves: openArray[string], size: uint8, komi: int8 = 0'i8, swap: bool = true): (Game, Error) =
+proc fromPTNMoves*(moves: openArray[string], size: static uint, komi: int8 = 0'i8, swap: bool = true): (Game[size], Error) =
     var (game, error) = newGame(size, komi, swap)
     
     if ?error:
         error.add("Unable to create new game")
-        return (default(Game), error)
+        return (default(Game[size]), error)
 
     for moveStr in moves:
-        var (playtype, move, err) = parseMove(moveStr, int size)
+        var (playtype, move, err) = parseMove(moveStr, size)
 
         echo moveStr, move, ?err, $err
         if ?err:
             err.add("Unable to parse move")
-            return (default(Game), err)
+            return (default(Game[size]), err)
 
-        if playtype != PlayType.move: return (default(Game), newError("Playtype is not a move"))
+        if playtype != PlayType.move: return (default(Game[size]), newError("Playtype is not a move"))
 
         err = game.play(move)
         echo game.toTps
         echo ?err, $err
         if ?err:
             err.add("Invalid move!")
-            return (default(Game), err)
+            return (default(Game[size]), err)
     return (game, default(Error))
 
 # # in a 2d array of 1s and 0s check if there is a path from left to right or top to bottom, but not left or right to bottom and not left or right to top

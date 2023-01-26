@@ -4,14 +4,14 @@ import std/sequtils, std/sugar, std/strutils, std/strformat
 from move import Square, Move, Direction, Spread, Place
 
 type
-    Board* = seq[seq[Tile]]
+    Board*[N: static uint] = array[N, array[N, Tile]]
 
-proc newBoard*(size: int): Board =
-     result = newSeqWith(size, newSeq[Tile](size))
+proc newBoard*(size: static uint): Board[size] =
+    var b: array[size, array[size, Tile]]
+    Board[size](b)
 
 proc isSquareOutOfBounds*(board: Board, square: Square): bool =
-    let N = board.len
-    return (square.row < 0 or square.row >= N or square.column < 0 or square.column >= N)
+    return (square.row < 0 or square.row >= board.N or square.column < 0 or square.column >= board.N)
 
 proc condenseBlanks(rowSeq: var seq[string], blanks: int) =
     if blanks < 1:
