@@ -1,5 +1,6 @@
 import game as gm
 from board import Board, newBoard
+import move
 import tile
 import std/strutils, std/sequtils, std/strformat
 import ../util/error
@@ -10,6 +11,7 @@ proc getPlyFromMove(color: Color, moveNum: int): uint16 =
         (uint16 moveNum - 1) * 2'u16
     of Color.black:
         (uint16 moveNum - 1) * 2'u16 + 1'u16
+
 
 proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 0'i8, stoneCountConst: StoneCounts = default(StoneCounts)): (Game[size], Error) =
     
@@ -38,8 +40,7 @@ proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 
     let rows = boardStr.split('/')
     if (uint rows.len) != size: return (default(Game[size]), newError("Board segment has incorrect number of rows"))
 
-    var boardB: Board[size] = newBoard(size)   
-    #if board.len <= 0: return false
+    var boardB: Board[size] = newBoard(size)
 
     let boardStringSeq = rows.mapIt(it.split(','))
 
@@ -51,7 +52,7 @@ proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 
         if stoneCountConst == default(StoneCounts):
             (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
         else:
-            default(uint8 size)
+            default(StoneCounts, size)
         
     while colIdx < boardStringSeq.len:
 
@@ -68,13 +69,14 @@ proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 
                     newError( &"Parsing tps at col: {colIdx} row: {parseRowIdx} number of blanks exceeds board size"))
 
                 
-                boardB[colIdx][rowIdx ..< rowIdx + blanks] = newSeqWith(blanks, default(Tile))
+                # do nothing - these should be empty tiles?
 
                 parseRowIdx += 1
                 rowIdx += blanks
                 continue
 
             var (tileParsed, tileErr) = tileStr.parseTile
+
             
             if ?tileErr:
                 tileErr.add(&"Error parsing tps at col: {colIdx} row: {parseRowIdx}")
@@ -82,27 +84,29 @@ proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 
 
             boardB[colIdx][rowIdx] = tileParsed
 
-            if tileParsed.isTileEmpty:
+            if tileParsed.isEmpty:
                 parseRowIdx += 1
                 rowIdx += 1
                 continue
 
-            for clr in tileParsed.stack[0 ..< ^1]:
-                err = stoneCountsT.dec(clr, flat)
+            let stackIter = tileParsed.getStackIter
+            var idx: uint = 0
+            for pcFull in stackIter.nextPieceBack:
+                var (pcPart, clr) = pcFull
+                pcPart = if idx == (tileParsed.len - 1'u): pcPart else: flat
+                err = stoneCountsT.dec(clr, pcPart)
                 err.add(&"Error subtracting stones at col: {colIdx}, {rowIdx}")
                 if ?err: return (default(Game[size]), err)
-            
-            err = stoneCountsT.dec(tileParsed.stack[^1], tileParsed.piece)
-
-            err.add(&"Error subtracting top piece at col: {colIdx}, {rowIdx}")
-            if ?err: return (default(Game[size]), err)
+                idx += 1
 
             parseRowIdx += 1
             rowIdx += 1
 
         colIdx += 1
 
-    var game = Game[size]( board: boardB, to_play: to_play_clr, ply: cur_ply, stoneCounts: stoneCountsT, half_komi: komi, reversible_plies: 0'u8, swap: swap)
+    var game = Game[size]( board: boardB, to_play: to_play_clr, ply: cur_ply, stoneCounts: stoneCountsT, half_komi: komi, swap: swap, meta: default(Metadata[size]))
+
+    game.recalculateMetadata()
 
     return (game, default(Error))
             

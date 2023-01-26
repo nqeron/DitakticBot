@@ -14,7 +14,7 @@ type
     Direction* = enum 
         up, down, right, left
 
-    Spread* = tuple[direction: Direction, pattern: seq[int]]
+    Spread* = tuple[direction: Direction, pattern: seq[uint]]
 
     MoveKind* = enum
         place, spread 
@@ -29,13 +29,13 @@ type
 proc `&`*[V: Move](x: string, mv: Move): string =
     x.add($mv)
 
-template newSpread*(dir: Direction, pattSeq: seq[int]): MoveDetail =
+template newSpread*(dir: Direction, pattSeq: seq[uint]): MoveDetail =
     MoveDetail(kind: spread, spreadVal: (direction: dir, pattern: pattSeq))
 
 template newSpread(dir: Direction, pattStr: string): MoveDetail =
-    var patSeq: seq[int]
+    var patSeq: seq[uint]
     for c in pattStr:
-        patSeq.add((""&c).parseInt())
+        patSeq.add((""&c).parseUInt())
 
     MoveDetail(kind: spread, spreadVal: (direction: dir, pattern: patSeq))
 
@@ -105,8 +105,8 @@ proc parseMove*(moveString: string, boardSize: uint): (PlayType, Move, Error) =
     if capts == @[]: return (default(PlayType), defMove, newError("move does not fit expected pattern"))
     
     var captIdx = 0;
-    var stackAmt: int
-    if capts[captIdx].parseInt(stackAmt) <= 0:
+    var stackAmt: uint
+    if capts[captIdx].parseUInt(stackAmt) <= 0:
         stackAmt = 0
     captIdx += 1
 
@@ -197,11 +197,11 @@ proc ptnVal*(move: Move, size: uint, expanded: bool = false): string =
         move.movedetail.placeVal.ptnVal(expanded) & move.square.ptnVal(size)
     of spread:
         let spread = move.movedetail.spreadVal
-        var stackAmt = 0
+        var stackAmt: uint = 0
         var pattStr = ""
         
         if spread.pattern.len > 0:
-            stackAmt = foldl(spread.pattern, a + b, 0)
+            stackAmt = foldl(spread.pattern, a + b, 0'u)
             pattStr = if expanded and spread.pattern.len == 1: $spread.pattern[0] elif spread.pattern.len == 1: "" else: spread.pattern.map((it) => $it).join("")
 
         let stackAmtStr = if expanded or stackAmt > 1: $stackAmt else: ""

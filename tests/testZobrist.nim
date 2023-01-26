@@ -1,5 +1,5 @@
 import std/unittest
-import ../src/tak/zobrist
+import ../src/tak/game
 from ../src/tak/tile import Piece, Color
 
 suite "ZobristHashingTestSuite":

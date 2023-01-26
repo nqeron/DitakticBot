@@ -1,16 +1,4 @@
 import random
-import game
-from tile import Piece, Color
-
-type
-    
-    ZobristHash* = uint64
-
-    ZobristKeys[N: static uint] = object
-        blackToMove: ZobristHash
-        topPieces: array[N, array[N, array[6, ZobristHash]]]
-        stackPieces: array[N, array[N, array[256, ZobristHash]]]
-        stackHeights: array[N, array[N, array[101, ZobristHash]]]
 
 randomize()
 
@@ -37,12 +25,12 @@ let ZobristKeys8S = newZobrist(8'u)
 
 proc zobristAdvanceMove*(size: static uint): ZobristHash =
     case size
-    of 3: ZobristKeys3S.blackToMove
-    of 4: ZobristKeys4S.blackToMove
-    of 5: ZobristKeys5S.blackToMove
-    of 6: ZobristKeys6S.blackToMove
-    of 7: ZobristKeys7S.blackToMove
-    of 8: ZobristKeys8S.blackToMove
+    of 3: return ZobristKeys3S.blackToMove
+    of 4: return ZobristKeys4S.blackToMove
+    of 5: return ZobristKeys5S.blackToMove
+    of 6: return ZobristKeys6S.blackToMove
+    of 7: return ZobristKeys7S.blackToMove
+    of 8: return ZobristKeys8S.blackToMove
     else: discard
 
 # proc downcastSize[N: static uint](game: Game[N]): static uint =
@@ -58,34 +46,48 @@ proc zobristAdvanceMove*(size: static uint): ZobristHash =
 proc pieceIndex*(piece: Piece, color: Color): uint =
     uint ((ord(piece) shr 5) shl 1) + ord(color) - 1
 
-proc zobristHashStack(game: Game, i, j: uint, keys: ZobristKeys): ZobristHash =
+proc zobristHashStackSized(game: Game, square: Square, keys: ZobristKeys): ZobristHash =
     var hash = 0'u64
-    
-    let tile = game.board[i][j]
+    let tile: Tile = game[square]
 
-    if not tile.isTileEmpty:
-        let piece, color = tile.topTile
-        hash = hash.bitxor(keys.topPieces[i][j][pieceIndex(piece, color)])
-        hash = hash.bitxor(keys.stackHeights[i][j][tile.height])
-        hash = hash.bitxor(keys.stackPieces[i][j][game.metadata.p2Stacks[i][j]])
+    if not tile.isEmpty:
+        var (piece, color) = tile.topPiece
+        hash = hash.bitxor(keys.topPieces[square.row][square.column][pieceIndex(piece, color)])
+        hash = hash.bitxor(keys.stackHeights[square.row][square.column][tile.len])
+        hash = hash.bitxor(keys.stackPieces[square.row][square.column][game.meta.p2Stacks[square.row][square.column]])
 
     return hash
 
+
+proc zobristHashStack(game: Game, square: Square): ZobristHash =
+    case game.N:
+    of 3: return zobristHashStackSized(game, square, ZobristKeys3S)
+    of 4: return zobristHashStackSized(game, square, ZobristKeys4S)
+    of 5: return zobristHashStackSized(game, square, ZobristKeys5S)
+    of 6: return zobristHashStackSized(game, square, ZobristKeys6S)
+    of 7: return zobristHashStackSized(game, square, ZobristKeys7S)
+    of 8: return zobristHashStackSized(game, square, ZobristKeys8S)
+    else: discard
+
 proc zobristHashStateSized(game: Game, keys: ZobristKeys): ZobristHash =
     var hash = 0'u64
-    for i in 0 ..< game.size:
-        for j in 0 ..< game.size:
-            hash = hash.bitxor(zobristHashStack(game, i, j, keys))
-    if game.blackToMove:
+    var i, j: uint
+    while i < game.N:
+        while j < game.N:
+            let sq: Square = (row: i, column: j)
+            hash = hash.bitxor(zobristHashStack(game, sq))
+            inc(j)
+        inc(i)
+    if game.to_play == black:
         hash = hash.bitxor(keys.blackToMove)
     hash
 
-proc zobristHashState*[N: static uint](game: Game[N]): ZobristHash =
-    case N:
-    of 3: zobristHashStateSized(game, ZobristKeys3S)
-    of 4: zobristHashStateSized(game, ZobristKeys4S)
-    of 5: zobristHashStateSized(game, ZobristKeys5S)
-    of 6: zobristHashStateSized(game, ZobristKeys6S)
-    of 7: zobristHashStateSized(game, ZobristKeys7S)
-    of 8: zobristHashStateSized(game, ZobristKeys8S)
+proc zobristHashState*(game: Game): ZobristHash =
+    case game.N:
+    of 3: return zobristHashStateSized(game, ZobristKeys3S)
+    of 4: return zobristHashStateSized(game, ZobristKeys4S)
+    of 5: return zobristHashStateSized(game, ZobristKeys5S)
+    of 6: return zobristHashStateSized(game, ZobristKeys6S)
+    of 7: return zobristHashStateSized(game, ZobristKeys7S)
+    of 8: return zobristHashStateSized(game, ZobristKeys8S)
     else: discard

@@ -14,4 +14,4 @@ jobs:
       - uses: actions/checkout@v3
       - uses: iffy/install-nim@v4.5.0
       - run: nimble install -y
-      - run: nimble debug
+      - run: nimble test

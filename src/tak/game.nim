@@ -1,13 +1,32 @@
 import board
 import tile
 import move
-import metadata
-import std/sequtils, std/strformat, std/math
+import bitmap
+import std/sequtils, std/strformat, std/math, std/bitops
 import ../util/error
 
 type 
-
     StoneCounts* = tuple[wStones: uint8, wCaps: uint8, bStones: uint8, bCaps: uint8]
+
+    ZobristHash* = uint64
+
+    ZobristKeys*[N: static uint] = object
+        blackToMove: ZobristHash
+        topPieces: array[N, array[N, array[6, ZobristHash]]]
+        stackPieces: array[N, array[N, array[256, ZobristHash]]]
+        stackHeights: array[N, array[N, array[101, ZobristHash]]]
+
+    Metadata*[Z: static uint] = object
+        p1Pieces: Bitmap[Z]
+        p2Pieces: Bitmap[Z]
+        flatstones: Bitmap[Z]
+        standingStones: Bitmap[Z]
+        capstones: Bitmap[Z]
+        p1FlatCount: uint8
+        p2FlatCount: uint8
+        p1Stacks: array[Z, array[Z, uint8]]
+        p2Stacks: array[Z, array[Z, uint8]]
+        hash*: ZobristHash
 
     Game*[N: static uint] = object 
         board*: Board[N]
@@ -17,6 +36,19 @@ type
         half_komi*: int8
         swap*: bool
         meta*: Metadata[N]
+
+
+proc `[]`*(game: var Game, square: Square): var Tile =
+    result = game.board[square.row][square.column]
+
+proc `[]`*(game: Game, square: Square): Tile =
+    result = game.board[square.row][square.column]
+
+proc `[]=`*(game: var Game, square: Square, tile: Tile) {. inline .} =
+    game.board[square.row][square.column] = tile
+
+include zobrist
+include metadata
 
 proc getFlats*(stoneCounts: StoneCounts, color: Color): uint8 =
     case color
@@ -81,14 +113,14 @@ proc getColorToPlay*(game: Game): Color =
     if (game.swap and game.ply < 2):
         result = not result
 
-proc `default`*(sz: uint8): StoneCounts =
-    let (stones, caps) = sz.stones_for_size
+proc `default`*(t: typedesc[StoneCounts], size: uint): StoneCounts =
+    let (stones, caps) = (uint8 size).stones_for_size
     result = (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
 
-proc newGame*(size: static uint8 = 6'u8, komi: int8 = 2'i8, swap: bool = true): (Game[size], Error) =
+proc newGame*(size: static uint = 6'u8, komi: int8 = 2'i8, swap: bool = true): (Game[size], Error) =
     if size < 3 or size > 8: return (default(Game[size]), newError("Game size not supported"))
 
-    var stnCounts: StoneCounts = default(size)
+    var stnCounts: StoneCounts = default(StoneCounts, size)
     var brd = newBoard(size)
     var addr_out = Game[size](
         board: brd,
@@ -99,12 +131,6 @@ proc newGame*(size: static uint8 = 6'u8, komi: int8 = 2'i8, swap: bool = true): 
         swap: swap
     )
     return (addr_out, default(Error))
-
-proc `[]`*(game: Game, square: Square): Tile =
-    result = game.board[square.row][square.column]
-
-proc `[]=`*(game: var Game, square: Square, tile: Tile) {. inline .} =
-    game.board[square.row][square.column] = tile
 
 
 proc executePlace(game: var Game, square: Square, piece: Piece): Error =
@@ -117,28 +143,28 @@ proc executePlace(game: var Game, square: Square, piece: Piece): Error =
     
     if  game.board.isSquareOutOfBounds(square): return newError("square is out of bounds")
 
-    if not game[square].isTileEmpty: return newError("Cannot place piece in on square with existing pieces") #check if tile is empty
+    if not game[square].isEmpty: return newError("Cannot place piece in on square with existing pieces") #check if tile is empty
         
-    game[square] = Tile(piece: piece, stack: @[color])
-    #game.metadata.placePiece(piece, square)
+    game[square].addPiece(piece, color)
+    game.meta.placePiece(piece, color, square)
 
     return default(Error)
 
-proc executeSpread(game: var Game, square: Square, direction: Direction, pattern: seq[int]): Error =
-    #echo "executing spread: ", square, " ", direction, " ", pattern
+proc executeSpread(game: var Game, square: Square, direction: Direction, pattern: seq[uint]): Error =  
     let color = game.to_play
     
     if game.board.isSquareOutOfBounds(square):
         return newError("Square is out of bounds")
     var tile = game[square]
-    if tile.isTileEmpty:
+    if tile.isEmpty:
         return newError("No pieces on tile to move")
+    
+    let (topPc, chkColor) = tile.topPiece
 
-    if not (tile.topTile.color == color):
+    if not (chkColor == color):
         return newError("Top tile does not belong to player")
 
     let count = pattern.len
-    #echo &"count: {count}"
     case direction:
     of up:
         if (int square.row) - count < 0:
@@ -153,43 +179,42 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
         if (int square.column) + count >= game.board.len:
             return newError("Spread moves past bound of board")
 
-    let numPieces = foldl(pattern, a + b)
-    #echo &"numPieces: {numPieces}"
-    if tile.stack.len < numPieces:
+    let numPieces = uint foldl(pattern, a + b)
+    if  numPieces > tile.length:
         return newError("number of pieces in move exceeds number of pieces in stack")
 
     let origBoardState = game
-    
-    var toDrop = tile.stack[^numPieces..^1]
-    #echo &"toDrop: {toDrop}"
-    game[square] = if numPieces == len(tile.stack): default(Tile) else: Tile(piece: flat, stack: tile.stack[0 ..< ^numPieces])
+    game.meta.hash = game.meta.hash.bitxor(zobristHashStack(game, square))
 
-    var pattern_idx = 0
+    var carry = game[square].take(numPieces)
 
-    var nextSquare: Square = square.nextInDir(direction)
-    while pattern_idx < pattern.len:
+    game.meta.setStack(game[square], square)
 
-        case game[nextSquare].topTile.piece
-        of wall:
-            if not( tile.piece == cap and (pattern_idx == (len(pattern) - 1)) and pattern[pattern_idx] == 1): 
-                game = origBoardState
-                return newError("can not move into square")
-        of cap:
-            game = origBoardState
-            return newError("can not move into square")
-        of flat: discard
+    game.meta.hash = game.meta.hash.bitxor(zobristHashStack(game, square))
 
-        game[nextSquare] = game[nextSquare].add(toDrop[0..<pattern[pattern_idx]], 
-                                if pattern_idx == (len(pattern) - 1): tile.piece else: flat)
-        
-        toDrop = toDrop[pattern[pattern_idx]..^1]
-        
+    var nextSquare = square
+    var validCrush = false
+    for i in 0 ..< count:
         nextSquare = nextSquare.nextInDir(direction)
-        pattern_idx += 1
+        if game.board.isSquareOutOfBounds(nextSquare):
+            game = origBoardState
+            return newError("Spread moves past bound of board")
+
+        game.meta.hash = game.meta.hash.bitxor(zobristHashStack(game, nextSquare))
+        let (piece, _) = if game[nextSquare].isEmpty: (flat, default(Color)) else: game[nextSquare].topPiece
+        case piece:
+        of flat: discard
+        of cap: return newError("Cannot spread into capstone")
+        of wall:
+            validCrush = i == (count - 1) and topPc == cap and pattern[i] == 1
+            if not validCrush:
+                return newError("Cannot spread into wall")
+
+        game[nextSquare].add(carry.drop(pattern[i]))
+        game.meta.setStack(game[nextSquare], nextSquare)
+        game.meta.hash = game.meta.hash.bitxor(zobristHashStack(game, nextSquare))
         
 
-    #take top pieces - sum of pattern
-    #drop one by one onto square in direction
     return default(Error)
 
 proc executeMove(self: var Game, square: Square, place: Place): Error =
@@ -211,7 +236,6 @@ proc executeMove(game: var Game, move: Move): Error =
     of place:
         game.executeMove(move.square, move.movedetail.placeVal)
     of spread:
-        #echo "executing spread"
         game.executeMove(move.square, move.movedetail.spreadVal)
 
 proc play*(game: var Game, move: Move): Error =  
@@ -219,6 +243,9 @@ proc play*(game: var Game, move: Move): Error =
     if ?err: 
         err.add( &"Error executing move: {move}")
         return err
+
+    game.meta.hash = game.meta.hash.bitxor(zobristAdvanceMove(game.N))
+
     game.to_play = not game.to_play
     game.ply += 1
 
@@ -243,7 +270,6 @@ proc fromPTNMoves*(moves: openArray[string], size: static uint, komi: int8 = 0'i
     for moveStr in moves:
         var (playtype, move, err) = parseMove(moveStr, size)
 
-        echo moveStr, move, ?err, $err
         if ?err:
             err.add("Unable to parse move")
             return (default(Game[size]), err)
@@ -251,70 +277,48 @@ proc fromPTNMoves*(moves: openArray[string], size: static uint, komi: int8 = 0'i
         if playtype != PlayType.move: return (default(Game[size]), newError("Playtype is not a move"))
 
         err = game.play(move)
-        echo game.toTps
-        echo ?err, $err
         if ?err:
             err.add("Invalid move!")
             return (default(Game[size]), err)
     return (game, default(Error))
 
-# # in a 2d array of 1s and 0s check if there is a path from left to right or top to bottom, but not left or right to bottom and not left or right to top
-# proc checkTak*( game: Game, color: Color): bool =
-#     let board = game.board
-#     var visited: seq[seq[(bool, bool)]] = newSeq[seq[(bool, bool)]](board.len)
-#     for i in 0 ..< board.len:
-#         visited[i] = newSeq[(bool, bool)](board.len)
+proc checkTak*(game: Game): (bool, Color) =
+    let m = game.meta
+    let p1RoadBMP = m.p1Pieces.bitand(m.flatstones.bitor(m.capstones))
+    let p2RoadBMP = m.p2Pieces.bitand(m.flatstones.bitor(m.capstones))
     
-#     var queue: seq[Square] = @[]
-#     var leftEdge = false
-#     var topEdge = false
-#     for i in 0 ..< board.len:
-#         if  game.board[i][0].topColorEq(color):
-#             queue.add(newSquare(i, 0))
-#             visited[i][0] = (true, false)
-#         if  board[0][i].topColorEq(color):
-#             queue.add(newSquare(0, i))
-#             visited[0][i] = (false, true)
+    let p1Road: bool = p1RoadBMP.spansBoard()
+    let p2Road: bool = p2RoadBMP.spansBoard()
 
-#     while queue.len > 0:
-#         let square = queue.pop()
-#         if board[square.row][square.column].topColorEq(color) and ((visited[square.row][square.column][1] and square.row == board.len - 1) or (visited[square.row][square.column][0] and square.column == board.len - 1)):
-#             return true
-#         for dir in [up, down, left, right]:
-#             let nextSquare = square.nextInDir(dir)
-#             if nextSquare.row >= 0 and nextSquare.row < board.len and nextSquare.column >= 0 and nextSquare.column < board.len:
-#                 if board[nextSquare.row][nextSquare.column].topColorEq(color):
-#                     if not (visited[nextSquare.row][nextSquare.column][0] and visited[nextSquare.row][nextSquare.column][1]):
-#                         queue.add(nextSquare)
-#                         visited[nextSquare.row][nextSquare.column] = (visited[square.row][square.column][0] or visited[nextSquare.row][nextSquare.collumn][0], visited[square.row][square.column][1] or )
+    if  p1Road and p2Road:
+        return (true, game.getColorToPlay)
 
-#     return false
+    if p1Road:
+        return (true, white)
+
+    if p2Road:
+        return (true, black)
+
+    return (false, default(Color))
+
+
+
 
 # in a Game, check if a player has more flats than the other player - returns win, winner, tie
 proc checkFlatWin*(game: Game): (bool, Color, bool) =
     let reserves = game.stoneCounts
     
-    let board = game.board
-    var wCount, bCount = 0
-    for i in 0 ..< board.len:
-        for j in 0 ..< board.len:
-            if not board[i][j].isTileEmpty and board[i][j].topTile.piece == flat:
-                if board[i][j].topTile.color == white:
-                    wCount += 1
-                else:
-                    bCount += 1
-
-    if wCount + bCount > board.len * board.len:
-        if wCount == bCount + game.half_komi:
-            return (true, default(Color), true)
-        return (true, if wCount > bCount + game.half_komi: white else: black, false)
-
-    if reserves.getTotalStones(white) > 0 or reserves.getTotalStones(black) > 0:
+    let m = game.meta
+    
+    if not ((m.p1Pieces.bitor(m.p2Pieces).fillsBoard()) or (reserves.getTotalStones(white) == 0 and reserves.getTotalStones(black) == 0)):
         return (false, default(Color), false)
 
-    if wCount > bCount + game.half_komi:
+    let p1Score  = (2 * (int8 m.p1FlatCount))
+    let p2Score = (2 * (int8 m.p2FlatCount)) + game.half_komi
+
+    if p1Score > p2Score:
         return (true, white, false)
-    elif bCount + game.half_komi > wCount:
+    elif p2Score > p1Score:
         return (true, black, false)
     else:
         return (true, default(Color), true)
@@ -323,8 +327,19 @@ proc isOver*(game: Game): bool =
     let (flatWin, winner, tie) = game.checkFlatWin()
     if flatWin:
         return true
-    # if game.checkTak(game.to_play):
-    #     return true
-    # if game.checkTak(not game.to_play):
-    #     return true
-    return false
+    return game.checkTak()[0]
+
+proc recalculateMetadata*(game: var Game) =
+    game.meta = default(Metadata[game.N])
+
+    var x, y: uint
+    while x < game.N:
+        while y < game.N:
+            let square: Square = (row: x, column: y)
+            let stack = game[square]
+            if not stack.isEmpty:
+                game.meta.setStack(stack, square)
+            inc(y)
+        inc(x)
+
+    game.meta.hash = zobristHashState(game)

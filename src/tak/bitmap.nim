@@ -1,4 +1,4 @@
-import std/bitops, strformat
+import std/bitops
 from move import Direction
 
 type
@@ -73,8 +73,8 @@ proc boardMask*(size: static uint): Bitmap[size] =
 proc dilate*(bitmap: Bitmap): Bitmap =
     var dilation = bitmap
 
-    dilation = dilation.bitor((bitmap shl 1).bitand(edgeMask(bitmap.N)[ord(right)].bitnot).bitand(boardMask(bitmap.N)))
-    dilation = dilation.bitor((bitmap shr 1).bitand(edgeMask(bitmap.N)[ord(left)].bitnot))
+    dilation = dilation.bitor((bitmap shl 1).bitand(bitnot edgeMask(bitmap.N)[ord(right)]).bitand(boardMask(bitmap.N)))
+    dilation = dilation.bitor((bitmap shr 1).bitand(bitnot edgeMask(bitmap.N)[ord(left)]))
     dilation = dilation.bitor((bitmap shl bitmap.N).bitand(boardMask(bitmap.N)))
     dilation = dilation.bitor((bitmap shr bitmap.N))
 
@@ -84,7 +84,7 @@ proc floodFill*(bitmap: Bitmap, mask: Bitmap): Bitmap =
     var seed = bitmap.bitand(mask)
 
     while true:
-        let next: uint64 = (uint64 seed).dilate().bitand(uint64 mask)
+        let next = seed.dilate().bitand(mask)
         if next == seed:
             return seed
         seed = next
@@ -94,10 +94,10 @@ proc floodFill*(bitmap: Bitmap, mask: Bitmap): Bitmap =
 proc groups*[N: static uint](btmap: Bitmap[N]): GroupIter[N]  =
     GroupIter[N](seeds: btmap, bitmap: btmap)
 
-proc groupsFrom*[N](bitmap: Bitmap[N], seeds: Bitmap[N]): GroupIter[N] =
-    assert(seeds.bitand(bitnot self) == 0'u64, "provided seeds are not a subset of the bitmap")
+proc groupsFrom*(btmap: Bitmap, seds: Bitmap): GroupIter[btmap.N] =
+    assert(seds.bitand(bitnot btmap) == 0'u64, "provided seeds are not a subset of the bitmap")
     
-    (seeds, bitmap)
+    GroupIter[btmap.N](seeds: seds, bitmap: btmap)
 
 proc width*[N: static uint](bitmap: Bitmap[N]): uint =
     var rowMask = edgeMask(N)[ord(up)]
@@ -119,7 +119,7 @@ proc height*[N: static uint](bitmap: Bitmap[N]): uint =
     
     return uint colAggregate.countSetBits()
 
-proc lowestBit*[N](bitmap: Bitmap[N]): Bitmap[N] =
+proc lowestBit*(bitmap: Bitmap): Bitmap =
     let remainder = bitmap.bitand(bitmap - 1)
     return bitmap.bitand(bitnot remainder)
 
@@ -140,18 +140,24 @@ proc lowestBit*[N](bitmap: Bitmap[N]): Bitmap[N] =
 proc bits*[Z: static uint](btmap: Bitmap[Z]): BitIter[Z] =
     BitIter[Z](bitmap: btmap)
 
-proc nextGroup*[F: static uint](iterStart: GroupIter[F]): iterator(): Bitmap[F] =
-    return iterator(): Bitmap[F] =
+proc nextGroup*(iterStart: GroupIter): iterator(): Bitmap[iterStart.F] =
+    return iterator(): Bitmap[iterStart.F] =
         var iter = iterStart
         while iter.seeds != 0'u64:
             let seed = iter.seeds.lowestBit()
-            echo fmt"seed: `{seed:#b}`"
-            echo fmt"iter.bitmap: `{iter.bitmap:#b}`"
-            let group = floodFill(seed, Bitmap[F](iter.bitmap))
+            let group = floodFill(seed, Bitmap[iterStart.F](iter.bitmap))
             iter.seeds = iter.seeds.bitand( bitnot group )
             iter.bitmap = iter.bitmap.bitand( bitnot group )
-            echo fmt"group: `{group:#b}`"
-            yield Bitmap[iter.F](group)
+            yield Bitmap[iterStart.F](group)
+
+iterator groupIterator*(iterStart: GroupIter): Bitmap[iterStart.F] =
+    var iter = iterStart
+    while iter.seeds != 0'u64:
+        let seed = iter.seeds.lowestBit()
+        let group = floodFill(seed, iter.bitmap)
+        iter.seeds = iter.seeds.bitand( bitnot group )
+        iter.bitmap = iter.bitmap.bitand( bitnot group )
+        yield group
 
 proc nextBit*[Z: static uint](iterStart: BitIter[Z]): iterator(): Bitmap[Z] =
     return iterator(): Bitmap[Z] =
@@ -161,3 +167,14 @@ proc nextBit*[Z: static uint](iterStart: BitIter[Z]): iterator(): Bitmap[Z] =
             let bit = iter.bitmap.bitand(bitnot remainder)
             iter.bitmap = remainder
             yield bit
+
+proc spansBoard*(bitmap: Bitmap): bool =
+    let edge = edgeMask(bitmap.N)
+    let allEdges = edge[ord(up)].bitor(edge[ord(right)]).bitor(edge[ord(down)]).bitor(edge[ord(left)])
+
+    for group in bitmap.groupsFrom(bitmap.bitand(allEdges)).groupIterator:
+        if ((group.bitand(edge[ord(up)]) != 0'u64) and (group.bitand(edge[ord(down)]) != 0'u64)) or ((group.bitand(edge[ord(left)]) != 0'u64) and (group.bitand(edge[ord(right)]) != 0'u64)) :
+            return true
+
+proc fillsBoard*(bitmap: Bitmap): bool =
+    bitmap == boardMask(bitmap.N)

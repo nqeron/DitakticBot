@@ -56,7 +56,7 @@ proc initGame(): (Game, Actor, Actor, Error) =
         let (game, err) = parseGame(tps, swap, int8 komi)
         return (game, wPlayer, bPlayer, err)
 
-    let (game, crErr) = newGame(uint8 size, int8 komi, swap)
+    let (game, crErr) = newGame(size, int8 komi, swap)
     return (game, wPlayer, bPlayer, crErr)
 
 
