@@ -40,13 +40,13 @@ suite "game tps test":
 suite "game play test":
 
     test "valid places on default game":
-        var (game,err) = newGame()
+        var (game,err) = newGame(6'u)
         check(not ?err)
         check(not ?game.play(newMove(newSquare(0'u,0'u), newPlace(Place.flat))))
         check(not ?game.play(newMove(newSquare(0'u,5'u), newPlace(Place.flat))))
 
     test "invalid places on default game":
-        var (game,err) = newGame()
+        var (game,err) = newGame(6'u)
         check(not ?err)
         check(?game.play(newMove(newSquare(0'u,0'u), newPlace(Place.wall))))
         check(?game.play(newMove(newSquare(0'u,5'u), newPlace(Place.cap))))

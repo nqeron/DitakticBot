@@ -13,7 +13,7 @@ proc getPlyFromMove(color: Color, moveNum: int): uint16 =
         (uint16 moveNum - 1) * 2'u16 + 1'u16
 
 
-proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 0'i8, stoneCountConst: StoneCounts = default(StoneCounts)): (Game[size], Error) =
+proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 0'i8, stoneCountConst: StoneCounts = default(StoneCounts, size)): (Game[size], Error) =
     
     let segments = val.split(' ')
 
@@ -49,7 +49,7 @@ proc parseGame*(val: string, size: static uint, swap: bool = true, komi: int8 = 
     let (stones, caps) = stones_for_size( uint8 size )
  
     var  stoneCountsT: StoneCounts =
-        if stoneCountConst == default(StoneCounts):
+        if stoneCountConst == default(StoneCounts, size):
             (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
         else:
             default(StoneCounts, size)

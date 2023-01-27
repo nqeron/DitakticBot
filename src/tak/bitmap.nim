@@ -70,17 +70,38 @@ proc boardMask*(size: static uint): Bitmap[size] =
     ]
     return Bitmap[size](boardMasks[size])
 
+proc dilat*[N: static uint](bitmap: Bitmap[N]): Bitmap[N] =
+    var dilation = bitmap
+
+    dilation = dilation.bitor((bitmap shl 1).bitand(bitnot edgeMask(N)[ord(right)]).bitand(boardMask(N)))
+    dilation = dilation.bitor((bitmap shr 1).bitand(bitnot edgeMask(N)[ord(left)]))
+    dilation = dilation.bitor((bitmap shl N).bitand(boardMask(N)))
+    dilation = dilation.bitor((bitmap shr N))
+
+    return dilation
+
 proc dilate*(bitmap: Bitmap): Bitmap =
     var dilation = bitmap
 
-    dilation = dilation.bitor((bitmap shl 1).bitand(bitnot edgeMask(bitmap.N)[ord(right)]).bitand(boardMask(bitmap.N)))
-    dilation = dilation.bitor((bitmap shr 1).bitand(bitnot edgeMask(bitmap.N)[ord(left)]))
-    dilation = dilation.bitor((bitmap shl bitmap.N).bitand(boardMask(bitmap.N)))
+    let eR: Bitmap = edgeMask(bitmap.N)[ord(right)]
+    let notEr = eR.bitnot()
+
+    let bM: Bitmap = boardMask(bitmap.N)
+    let z: Bitmap = notEr.bitand(bM)
+
+    let bmL1: Bitmap = bitmap shl 1
+    let bmR1: Bitmap = bitmap shr 1
+
+    let bmlN: Bitmap = bitmap shl bitmap.N
+
+    dilation = dilation.bitor(bmL1.bitand(z))
+    dilation = dilation.bitor((bmR1).bitand(bitnot edgeMask(bitmap.N)[ord(left)]))
+    dilation = dilation.bitor(bmlN.bitand(boardMask(bitmap.N)))
     dilation = dilation.bitor((bitmap shr bitmap.N))
 
     return dilation
 
-proc floodFill*(bitmap: Bitmap, mask: Bitmap): Bitmap =
+proc floodFill*[N: static uint](bitmap: Bitmap[N], mask: Bitmap[N]): Bitmap[N] =
     var seed = bitmap.bitand(mask)
 
     while true:
@@ -119,7 +140,7 @@ proc height*[N: static uint](bitmap: Bitmap[N]): uint =
     
     return uint colAggregate.countSetBits()
 
-proc lowestBit*(bitmap: Bitmap): Bitmap =
+proc lowestBit*[N: static uint](bitmap: Bitmap[N]): Bitmap[N] =
     let remainder = bitmap.bitand(bitmap - 1)
     return bitmap.bitand(bitnot remainder)
 

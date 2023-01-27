@@ -17,7 +17,9 @@ func roundtrip(typ: Game, val: string, expanded: bool = false): bool =
 suite "check move ptn":
 
     test "roundtrip move - place - default board":
-        var (game, err) = newGame()
+        var game: Game[6'u]
+        var err: Error
+        (game, err) = newGame(6'u)
         check(not ?err)
         checkRoundtripAll( ["a1", "a6", "f6", "f1", "b2", "c3", "Sd2", "Ce4"], proc(c: string): bool = (game).roundtrip(c))
 
@@ -34,7 +36,7 @@ suite "check move ptn":
         checkRoundtripAll( ["3c5<12", "1c5<1", "1d3+1", "3d5-111", "2b4-2", "3c5>12"], proc(c: string): bool = (game).roundtrip(c, true))
 
     test "incorrect places on default board":
-        var (game, err) = newGame()
+        var (game, err) = newGame(6'u)
         check(not ?err)
         checkRoundTripAll(["1a", "3", "Q", "cC4", "b8", "h3"], proc(c: string): bool = not (game).roundtrip(c))
 

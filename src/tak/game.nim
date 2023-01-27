@@ -117,20 +117,22 @@ proc `default`*(t: typedesc[StoneCounts], size: uint): StoneCounts =
     let (stones, caps) = (uint8 size).stones_for_size
     result = (wStones: stones, wCaps: caps, bStones: stones, bCaps: caps)
 
-proc newGame*(size: static uint = 6'u8, komi: int8 = 2'i8, swap: bool = true): (Game[size], Error) =
+proc newGame*(size: static uint, komi: int8 = 2'i8, swap: bool = true): (Game[size], Error) =
     if size < 3 or size > 8: return (default(Game[size]), newError("Game size not supported"))
 
     var stnCounts: StoneCounts = default(StoneCounts, size)
     var brd = newBoard(size)
-    var addr_out = Game[size](
-        board: brd,
-        to_play: white,
-        ply: 0,
-        stoneCounts: stnCounts,
-        half_komi: komi,
-        swap: swap
-    )
-    return (addr_out, default(Error))
+    (
+        Game[size](
+            board: brd,
+            to_play: white,
+            ply: 0,
+            stoneCounts: stnCounts,
+            half_komi: komi,
+            swap: swap,
+            meta: default(Metadata[size])
+        ) 
+    , default(Error))
 
 
 proc executePlace(game: var Game, square: Square, piece: Piece): Error =
@@ -283,9 +285,9 @@ proc fromPTNMoves*(moves: openArray[string], size: static uint, komi: int8 = 0'i
     return (game, default(Error))
 
 proc checkTak*(game: Game): (bool, Color) =
-    let m = game.meta
-    let p1RoadBMP = m.p1Pieces.bitand(m.flatstones.bitor(m.capstones))
-    let p2RoadBMP = m.p2Pieces.bitand(m.flatstones.bitor(m.capstones))
+    let m: Metadata[game.N] = game.meta
+    let p1RoadBMP: Bitmap[game.N] = m.p1Pieces.bitand(m.flatstones.bitor(m.capstones))
+    let p2RoadBMP: Bitmap[game.N] = m.p2Pieces.bitand(m.flatstones.bitor(m.capstones))
     
     let p1Road: bool = p1RoadBMP.spansBoard()
     let p2Road: bool = p2RoadBMP.spansBoard()
