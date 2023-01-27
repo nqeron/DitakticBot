@@ -2,3 +2,7 @@ bin/main.exe
 tests/tileTest.exe
 tests/testMove.exe
 tests/testGame.exe
+tests/testBitmap.exe
+tests/testMoveGen.exe
+debugFile.txt
+tests/testTile.exe

@@ -1,17 +1,20 @@
 import tile
-import std/sequtils, std/sugar, std/strutils, std/strformat
+import std/strutils, std/strformat
 
 from move import Square, Move, Direction, Spread, Place
 
 type
-    Board* = seq[seq[Tile]]
+    Board*[N: static uint] = array[N, array[N, Tile]]
 
-proc newBoard*(size: int): Board =
-     result = newSeqWith(size, newSeq[Tile](size))
+proc newBoard*(size: static uint): Board[size] =
+    var b: array[size, array[size, Tile]]
+    for x in b.mitems:
+        for y in x.mitems:
+            y = default(Tile)
+    Board[size](b)
 
 proc isSquareOutOfBounds*(board: Board, square: Square): bool =
-    let N = board.len
-    return (square.row < 0 or square.row >= N or square.column < 0 or square.column >= N)
+    return (square.row < 0 or square.row >= board.N or square.column < 0 or square.column >= board.N)
 
 proc condenseBlanks(rowSeq: var seq[string], blanks: int) =
     if blanks < 1:
@@ -35,9 +38,9 @@ proc getTPSBoard*(board: Board): string =
 
         while rowIdx < board[colIdx].len:
 
-            let tile = board[colIdx][rowIdx]
+            let tile: Tile = board[colIdx][rowIdx]
 
-            if tile.isTileEmpty:
+            if tile.isEmpty:
                 blankCount += 1
                 rowIdx += 1
                 continue
@@ -45,14 +48,7 @@ proc getTPSBoard*(board: Board): string =
             rowSeq.condenseBlanks(blankCount)
             blankCount = 0
             
-            var stackStr = tile.stack.map( c => $c.numVal).join("")
-            
-            case tile.piece
-            of cap:
-                stackStr.add("C")
-            of wall:
-                stackStr.add("S")
-            of flat: discard
+            var stackStr = $tile
 
             rowSeq.add(stackStr)
             rowIdx += 1

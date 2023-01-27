@@ -7,14 +7,14 @@ type
     PlayType* = enum
         move, undo
 
-    Square* = tuple[row: int, column: int]
+    Square* = tuple[row: uint, column: uint]
 
     Place* = Piece
 
     Direction* = enum 
         up, down, right, left
 
-    Spread* = tuple[direction: Direction, pattern: seq[int]]
+    Spread* = tuple[direction: Direction, pattern: seq[uint]]
 
     MoveKind* = enum
         place, spread 
@@ -29,17 +29,17 @@ type
 proc `&`*[V: Move](x: string, mv: Move): string =
     x.add($mv)
 
-template newSpread*(dir: Direction, pattSeq: seq[int]): MoveDetail =
+template newSpread*(dir: Direction, pattSeq: seq[uint]): MoveDetail =
     MoveDetail(kind: spread, spreadVal: (direction: dir, pattern: pattSeq))
 
 template newSpread(dir: Direction, pattStr: string): MoveDetail =
-    var patSeq: seq[int]
+    var patSeq: seq[uint]
     for c in pattStr:
-        patSeq.add((""&c).parseInt())
+        patSeq.add((""&c).parseUInt())
 
     MoveDetail(kind: spread, spreadVal: (direction: dir, pattern: patSeq))
 
-template newSquare*(r: int, col: int): Square =
+template newSquare*(r: uint, col: uint): Square =
     (row: r, column: col)
 
 template newPlace*(placeDet: Place): MoveDetail =
@@ -59,26 +59,26 @@ proc `$`(direction: Direction): string =
     of right: ">"
     
 
-proc toColNum(colStr: string): (int, Error) =
-    if colStr == "" or colStr.len > 1: return (0, newError(&"invalid length {colStr.len}"))
+proc toColNum(colStr: string): (uint, Error) =
+    if colStr == "" or colStr.len > 1: return (0'u, newError(&"invalid length {colStr.len}"))
 
     case colStr
-    of "a": (0, default(Error))
-    of "b": (1, default(Error))
-    of "c": (2, default(Error))
-    of "d": (3, default(Error))
-    of "e": (4, default(Error))
-    of "f": (5, default(Error))
-    of "g": (6, default(Error))
-    of "h": (7, default(Error))
-    else: (0, newError( &"Invalid value for column {colStr}" ))
+    of "a": (0'u, default(Error))
+    of "b": (1'u, default(Error))
+    of "c": (2'u, default(Error))
+    of "d": (3'u, default(Error))
+    of "e": (4'u, default(Error))
+    of "f": (5'u, default(Error))
+    of "g": (6'u, default(Error))
+    of "h": (7'u, default(Error))
+    else: (0'u, newError( &"Invalid value for column {colStr}" ))
 
-proc parseRow(rowStr: string, boardSize: int): (int, Error) =
+proc parseRow(rowStr: string, boardSize: uint): (uint, Error) =
 
-    var rowStart: int
-    if rowStr == "" or rowStr.parseInt(rowStart) != 1: return (0, newError("Incorrect number of row elements"))
+    var rowStart: uint
+    if rowStr == "" or rowStr.parseUInt(rowStart) != 1: return (0'u, newError("Incorrect number of row elements"))
     let row = boardSize - rowStart
-    if row < 0: return (0, newError("given row number is too large"))
+    if row < 0: return (0'u, newError("given row number is too large"))
     return (row, default(Error))
 
 
@@ -91,7 +91,7 @@ proc parseDirection(directionStr: string): (Direction, Error) =
     of "<": (left, default(Error))
     else: (default(Direction), newError("Invalid direction"))
 
-proc parseMove*(moveString: string, boardSize: int): (PlayType, Move, Error) =
+proc parseMove*(moveString: string, boardSize: uint): (PlayType, Move, Error) =
 
     var defMove: Move
     
@@ -105,8 +105,8 @@ proc parseMove*(moveString: string, boardSize: int): (PlayType, Move, Error) =
     if capts == @[]: return (default(PlayType), defMove, newError("move does not fit expected pattern"))
     
     var captIdx = 0;
-    var stackAmt: int
-    if capts[captIdx].parseInt(stackAmt) <= 0:
+    var stackAmt: uint
+    if capts[captIdx].parseUInt(stackAmt) <= 0:
         stackAmt = 0
     captIdx += 1
 
@@ -154,15 +154,15 @@ proc parseMove*(moveString: string, boardSize: int): (PlayType, Move, Error) =
 proc nextInDir*(square: Square, direction: Direction): Square =
     case direction:
     of up:
-        (row: square.row, column: square.column + 1)
-    of down:
-        (row: square.row, column: square.column - 1)
-    of left:
         (row: square.row - 1, column: square.column)
-    of right:
+    of down:
         (row: square.row + 1, column: square.column)
+    of left:
+        (row: square.row, column: square.column - 1)
+    of right:
+        (row: square.row, column: square.column + 1)
 
-proc ptnVal(square: Square, size: int): string =
+proc ptnVal(square: Square, size: uint): string =
     if square.row >= size or square.column >= size: return ""
     let colPTN = 
         case square.column
@@ -191,17 +191,17 @@ proc ptnVal*(place: Place, expanded = false): string =
 
 
 
-proc ptnVal*(move: Move, size: int, expanded: bool = false): string =
+proc ptnVal*(move: Move, size: uint, expanded: bool = false): string =
     case move.movedetail.kind
     of place:
         move.movedetail.placeVal.ptnVal(expanded) & move.square.ptnVal(size)
     of spread:
         let spread = move.movedetail.spreadVal
-        var stackAmt = 0
+        var stackAmt: uint = 0
         var pattStr = ""
         
         if spread.pattern.len > 0:
-            stackAmt = foldl(spread.pattern, a + b, 0)
+            stackAmt = foldl(spread.pattern, a + b, 0'u)
             pattStr = if expanded and spread.pattern.len == 1: $spread.pattern[0] elif spread.pattern.len == 1: "" else: spread.pattern.map((it) => $it).join("")
 
         let stackAmtStr = if expanded or stackAmt > 1: $stackAmt else: ""

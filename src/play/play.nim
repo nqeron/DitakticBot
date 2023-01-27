@@ -1,4 +1,4 @@
-import ../tak/game as gm
+import ../tak/game
 import ../tak/move as mv
 import ../tak/tps as tpsParse
 from ../tak/tile import Color
@@ -9,15 +9,65 @@ import std/parseopt, std/parseutils, std/strformat
 type
     Play = enum
         move, undo
+    # BoardSize = enum
+    #     size3 = 3'u, size4 = 4'u, size5 = 5'u, size6 = 6'u, size7 = 7'u, size8 = 8'u
 
-proc initGame(): (Game, Actor, Actor, Error) =
+
+const size3: uint = 3'u
+const size4: uint = 4'u
+const size5: uint = 5'u
+const size6: uint = 6'u
+const size7: uint = 7'u
+const size8: uint = 8'u
+
+
+proc getMoveFromPlayer*(game: Game, wPlayer: Actor, bPlayer: Actor): (PlayType, Move, Error) =
+    case game.to_play
+    of white:
+        return wPlayer.getMove(game)
+    of black:
+        return bPlayer.getMove(game)
+
+proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err: Error): Error =
+    if ?err:
+        echo $err
+        return err
+    
+    echo &"Playing game {game} with players: {wPlayer}, {bPlayer}"
+
+    var positionHistory = @[game]
+
+    var curState = game
+
+    while not curState.isOver: #isNotFinished?
+        #get move
+        var (playType, pMove, err) = game.getMoveFromPlayer(wPlayer, bPlayer)
+
+        if ?err:
+            echo $err
+            return err
+
+        case playType
+        of PlayType.undo:
+            curState = positionHistory.pop()
+        of PlayType.move:
+            var nextPos = curState
+            err = nextPos.play(pMove)
+            if ?err:
+                echo $err
+                return err
+            else:
+                curState = nextPos
+                positionHistory.add(game)
+
+proc initGame(): Error =
 
     var p = initOptParser(shortNoVal = {'h'}, longNoVal = @["help", "white", "black", "size", "komi", "noSwap", "tps"])
 
     var wPlayer = human
     var bPlayer = human
     var komi = 2
-    var size = 6
+    var size: uint = 6
     var swap = true
     var tps: string
 
@@ -36,72 +86,70 @@ proc initGame(): (Game, Actor, Actor, Error) =
                 (wPlayer, err) = val.parseActor()
                 if ?err:
                     err.add("Error parsing white actor")
-                    return (default(Game), default(Actor), default(Actor), err)
+                    return err
             of "black": 
                 (bPlayer, err) = val.parseActor()
                 if ?err:
                     err.add("Error parsing black actor")
-                    return (default(Game), default(Actor), default(Actor), err)
+                    return err
             of "size": 
-                if val.parseInt(size) != 1:
-                    return (default(Game), default(Actor), default(Actor), newError("size too long"))
+                if val.parseUInt(size) != 1:
+                    return newError("size too long")
             of "komi": 
                 if val.parseInt(komi) != 1: 
-                    return (default(Game), default(Actor), default(Actor), newError("komi is too long"))
+                    return newError("komi is too long")
             of "noSwap": swap = false
             of "tps": tps = val
-            else: return (default(Game), default(Actor), default(Actor), newError(&"Option key {key} is invalid"))
+            else: return newError(&"Option key {key} is invalid")
 
     if tps != "":
-        let (game, err) = parseGame(tps, swap, int8 komi)
-        return (game, wPlayer, bPlayer, err)
-
-    let (game, crErr) = newGame(uint8 size, int8 komi, swap)
-    return (game, wPlayer, bPlayer, crErr)
-
-
-proc getMoveFromPlayer*(game: Game, wPlayer: Actor, bPlayer: Actor): (PlayType, Move, Error) =
-    case game.to_play
-    of white:
-        return wPlayer.getMove(game)
-    of black:
-        return bPlayer.getMove(game)
-
+        case size:
+        of 3'u: 
+            let (game, crErr) = parseGame(tps, size3, swap, int8 komi)
+            return gameLoop(game, wPlayer, bPlayer, crErr)
+        of 4'u:
+            let (game, crErr) = parseGame(tps, size4, swap, int8 komi)
+            return gameLoop[size4](game, wPlayer, bPlayer, crErr)
+        of 5'u:
+            let (game, crErr) = parseGame(tps, size5, swap, int8 komi)
+            return gameLoop(game, wPlayer, bPlayer, crErr)
+        of 6'u:
+            let (game, crErr) = parseGame(tps, size6, swap, int8 komi)
+            return gameLoop(game, wPlayer, bPlayer, crErr)
+        of 7'u:
+            let (game, crErr) = parseGame(tps, size7, swap, int8 komi)
+            return gameLoop(game, wPlayer, bPlayer, crErr)
+        of 8'u:
+            let (game, crErr) = parseGame(tps, size8, swap, int8 komi)
+            return gameLoop(game, wPlayer, bPlayer, crErr)
+        else:
+            return newError("Invalid board size")
+    else:
+        case size:
+        of size3: 
+            let (game, crErr) = newGame(size3, int8 komi, swap)
+            gameLoop(game, wPlayer, bPlayer, crErr)        
+        of size4:
+            let (game, crErr) = newGame(size4, int8 komi, swap)
+            gameLoop(game, wPlayer, bPlayer, crErr)
+        of size5:
+            let (game, crErr) = newGame(size5, int8 komi, swap)
+            gameLoop(game, wPlayer, bPlayer, crErr)
+        of size6:
+            let (game, crErr) = newGame(size6, int8 komi, swap)
+            gameLoop(game, wPlayer, bPlayer, crErr)
+        of size7:
+            let (game, crErr) = newGame(size7, int8 komi, swap)
+            gameLoop(game, wPlayer, bPlayer, crErr)
+        of size8:
+            let (game, crErr) = newGame(size8, int8 komi, swap)
+            gameLoop(game, wPlayer, bPlayer, crErr)
+        else:
+            return newError("Invalid board size")
 
 proc mainLoop*() = 
 
-    var (game, wPlayer, bPlayer, err) = initGame()
+    let err = initGame()
     if ?err:
         echo $err
-        return
-    
-    echo &"Playing game {game} with players: {wPlayer}, {bPlayer}"
-
-    var positionHistory = @[game]
-
-    while true: #isNotFinished?
-        #get move
-        var (playType, pMove, err) = game.getMoveFromPlayer(wPlayer, bPlayer)
-
-        if ?err:
-            echo $err
-            break
-
-        case playType
-        of PlayType.undo:
-            game = positionHistory.pop()
-        of PlayType.move:
-            var nextPos = game
-            err = nextPos.play(pMove)
-            if ?err:
-                echo $err
-            else:
-                game = nextPos
-                positionHistory.add(game)
-
-        echo game.toTps
-        
-        if game.ply == 20: #put in break temporarily
-            break
-
-        #play/undo move
+        quit(1)
