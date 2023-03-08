@@ -3,6 +3,7 @@ import tak/move as mv
 import tak/tps
 import tak/game as gm
 import play/play as playMove, play/player
+import tei/tei
 
 import std/strformat
 
@@ -14,8 +15,8 @@ import util/error
 #     echo $err
 # echo play, move
 
-mainLoop()
-
+#mainLoop()
+teiLoop()
 # let move = newMove(newSquare(1,1,), Place.flat)
 
 # var (game, err) = parseGame("x6/x6/x6/x6/x6/x6 2 1", true)

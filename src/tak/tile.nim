@@ -14,10 +14,11 @@ type
         tile: Tile
         iTop: uint
         iBottom: uint
+    
 
 proc `default`*(t: typedesc[Tile]): Tile = Tile(0b1000)
 
-const MaxStackHeight: uint32 = (uint32 (uint uint32.high.countSetBits) - 4'u)
+const MaxStackHeight*: uint = 32'u - 4'u
 
 proc fromPiece*(piece: Piece, color: Color): Tile =
     Tile(0b10000'u32.bitor((uint32 piece) shr 3).bitor((uint32 color) - 1))

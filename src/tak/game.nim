@@ -198,6 +198,11 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     var validCrush = false
     for i in 0 ..< count:
         nextSquare = nextSquare.nextInDir(direction)
+
+        if game[nextSquare].len + pattern[i] > MaxStackHeight:
+            game = origBoardState
+            return newError("Spread causes stack to exceed max height")
+
         if game.board.isSquareOutOfBounds(nextSquare):
             game = origBoardState
             return newError("Spread moves past bound of board")

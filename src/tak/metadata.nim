@@ -65,3 +65,19 @@ proc placePiece*(m: var Metadata, piece: Piece, color: Color, square: Square) =
     of cap:
         m.capstones.set(square.row, square.column)
     # m.hash = m.hash xor zobristHashes[x][y][tile]
+
+proc pieceCount*(m: Metadata, color: Color, piece: Piece): int =
+    if (color == white and piece == flat):
+        return int m.p1FlatCount
+    elif (color == black and piece == flat):
+        return (int) m.p2FlatCount
+    elif (color == white and piece == wall):
+        return (int) m.p1Pieces.bitand(m.standingStones).popCount
+    elif (color == black and piece == wall):
+        return (int) m.p2Pieces.bitand(m.standingStones).popCount
+    elif (color == white and piece == cap):
+        return (int) m.p1Pieces.bitand(m.capstones).popCount
+    elif (color == black and piece == cap):
+        return (int) m.p2Pieces.bitand(m.capstones).popCount
+    else:
+        return 0

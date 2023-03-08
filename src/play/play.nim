@@ -41,7 +41,7 @@ proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err
 
     while not curState.isOver: #isNotFinished?
         #get move
-        var (playType, pMove, err) = game.getMoveFromPlayer(wPlayer, bPlayer)
+        var (playType, pMove, err) = curState.getMoveFromPlayer(wPlayer, bPlayer)
 
         if ?err:
             echo $err
