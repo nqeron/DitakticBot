@@ -2,7 +2,7 @@ import ../tak/game as gm
 import ../tak/move as mv
 import ../util/error
 import std/strformat
-#import ../ai/bot
+import ../analysis/bot
 
 type
     Actor* = enum
@@ -26,7 +26,10 @@ proc getMove*(actor: Actor, game: Game): (PlayType, Move, Error) =
         let moveStr = readLine(stdin)
         return parseMove(moveStr, game.N)
     of ai:
-        return (default(PlayType), default(Move), newError("Not Supported yet"))
+        let (playType, move, error) = getAIMove(game)
+        if not ?error:
+            echo &"AI move: {move}"
+        return (playType, move, error)
     of playtak:
         return (default(PlayType), default(Move), newError("Not Supported yet"))
 

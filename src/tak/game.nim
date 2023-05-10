@@ -198,6 +198,11 @@ proc executeSpread(game: var Game, square: Square, direction: Direction, pattern
     var validCrush = false
     for i in 0 ..< count:
         nextSquare = nextSquare.nextInDir(direction)
+
+        if game[nextSquare].len + pattern[i] > MaxStackHeight:
+            game = origBoardState
+            return newError("Spread causes stack to exceed max height")
+
         if game.board.isSquareOutOfBounds(nextSquare):
             game = origBoardState
             return newError("Spread moves past bound of board")
@@ -325,11 +330,17 @@ proc checkFlatWin*(game: Game): (bool, Color, bool) =
     else:
         return (true, default(Color), true)
 
-proc isOver*(game: Game): bool =
+proc isOver*(game: Game, color: var Color): bool =
     let (flatWin, winner, tie) = game.checkFlatWin()
     if flatWin:
+        color = winner
         return true
-    return game.checkTak()[0]
+
+    let (takWin, takWinner) = game.checkTak()
+    if takWin:
+        color = takWinner
+        return true
+    return false
 
 proc recalculateMetadata*(game: var Game) =
     game.meta = default(Metadata[game.N])

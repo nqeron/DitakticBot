@@ -1,12 +1,14 @@
 import ../src/tak/game as gm
 import ../src/tak/movegen
 import ../src/util/error
+from ../src/tak/tile import Color
 import std/unittest, std/strformat
 import genUtil
 
 
 proc perfCount(game: Game, depth: int, trace: var Error): (int, Error) =
-    if depth == 0 or game.isOver:
+    var clr: Color
+    if depth == 0 or game.isOver(clr):
         return (1, trace)
     elif depth == 1:
         let pM = game.possibleMoves

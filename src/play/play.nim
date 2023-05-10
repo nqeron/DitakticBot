@@ -38,10 +38,11 @@ proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err
     var positionHistory = @[game]
 
     var curState = game
+    var clr: Color
 
-    while not curState.isOver: #isNotFinished?
+    while not curState.isOver(clr): #isNotFinished?
         #get move
-        var (playType, pMove, err) = game.getMoveFromPlayer(wPlayer, bPlayer)
+        var (playType, pMove, err) = curState.getMoveFromPlayer(wPlayer, bPlayer)
 
         if ?err:
             echo $err
