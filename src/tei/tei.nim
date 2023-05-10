@@ -3,9 +3,11 @@ import ../tak/move as mv
 import ../tak/tps as tpsParse
 from ../tak/tile import Color
 import ../analysis/bot
+import ../analysis/evaluation
 import ../play/player
 import ../util/error
 import std/parseopt, std/parseutils, std/strformat, std/strutils
+
 
 
 const size3 = 3'u
@@ -15,45 +17,53 @@ const size6 = 6'u
 const size7 = 7'u
 const size8 = 8'u
 
-proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8): Error =
+proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, level: uint8): Error =
+        
+        
+        
         if tps == "":
             case size:
             of size3:
                 let (game, err) = newGame(size3)
                 if ?err:
                     return err
-                
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size3)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size4:
                 let (game, err) = newGame(size4)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size4)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size5:
                 let (game, err) = newGame(size5)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size5)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size6:
                 let (game, err) = newGame(size6)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size6)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size7:
                 let (game, err) = newGame(size7)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size7)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size8:
                 let (game, err) = newGame(size8)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size8)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             else:
                 return newError("Invalid board size")
@@ -63,37 +73,43 @@ proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8): Error 
                 let (game, err) = parseGame(tps, size3, swap, halfKomi)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size3)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size4:
                 let (game, err) = parseGame(tps, size4, swap, halfKomi)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size4)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size5:
                 let (game, err) = parseGame(tps, size5, swap, halfKomi)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size5)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size6:
                 let (game, err) = parseGame(tps, size6, swap, halfKomi)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size6)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size7:
                 let (game, err) = parseGame(tps, size7, swap, halfKomi)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size7)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             of size8:
                 let (game, err) = parseGame(tps, size8, swap, halfKomi)
                 if ?err:
                     return err
-                let (eval, pv) = analyze(game)
+                let(evalFun, depth, duration) = getDifficultyPresets(level, size8)
+                let (eval, pv) = analyze(game, evalFun, depth, duration)
                 echo &"info score cp {eval} pv {pv}"
             else:
                 return newError("Invalid board size")
@@ -107,6 +123,7 @@ proc teiLoop*() =
     var size = 6'u
     var swap = true
     var tps = ""
+    var level: uint8 = 5'u8
     
     while true:
         let message = readLine(stdin)
@@ -121,6 +138,7 @@ proc teiLoop*() =
             echo &"id author {NimblePkgAuthor}"
             echo "option name HalfKomi type spin default 2 min -10 max 10"
             echo "option name Swap type check default true"
+            echo "option name Level type spin default 5 min 1 max 10"
             echo "teiok"
         of "isready":
             echo "readyok"
@@ -133,28 +151,48 @@ proc teiLoop*() =
                 assert halfKomi >= -10 and halfKomi <= 10, "Invalid komi"
             of "Swap":
                 swap = value == "true"
+            of "Level":
+                level = uint8 parseUInt(value)
+                assert level >= 1 and level <= 14, "Invalid level"
         of "teinewgame":
+            if parts.len < 2:
+                size = 6'u
+                continue
             size = parseUInt(parts[1])
 
-            assert size >= 3 and size <= 8, "Invalid board size"
+            if size < 3'u or size > 8'u:
+                echo "error: invalid size"
+                size = 6'u
+                continue
         of "position":
+            if parts.len < 2:
+                echo "error: position requires a type"
+                continue
+
             case parts[1]:
             of "startpos":
                 tps = ""
             of "tps":
+
+                if parts.len < 3:
+                    echo "error: tps requires a tps string"
+                    continue
+
                 tps = parts[2..^1].join(" ")
             else:
-                raise newException(ValueError, "Invalid position")
+                echo "error: unknown position type"
+                continue
         of "go":
             #ignore depth and duration for now
-            let err = chooseAnalysis(tps, size, swap, halfKomi)
+            let err = chooseAnalysis(tps, size, swap, halfKomi, level)
             if ?err:
                 echo &"error: {$err}"
 
         of "quit":
             break
         else:
-            raise newException(ValueError, "Invalid command")
+            echo "error: unknown command"
+            continue
 
 
 

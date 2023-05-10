@@ -81,3 +81,15 @@ proc pieceCount*(m: Metadata, color: Color, piece: Piece): int =
         return (int) m.p2Pieces.bitand(m.capstones).popCount
     else:
         return 0
+
+#returns size of each group
+proc groupCount*(m: Metadata, color: Color): seq[int] =
+    let edge = edgeMask(m.N)
+    let allEdges = edge[ord(up)].bitor(edge[ord(right)]).bitor(edge[ord(down)]).bitor(edge[ord(left)])
+
+    let bmp: Bitmap = m.flatstones.bitor(m.capstones).bitand(if clr == white: m.p1Pieces else: m.p2Pieces)
+    var sizes: seq[int]
+    for group in bmp.groupsFrom(bmp.bitand(allEdges)).groupIterator:
+        sizes.add(int group.popCount())
+
+    return sizes

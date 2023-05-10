@@ -330,11 +330,17 @@ proc checkFlatWin*(game: Game): (bool, Color, bool) =
     else:
         return (true, default(Color), true)
 
-proc isOver*(game: Game): bool =
+proc isOver*(game: Game, color: var Color): bool =
     let (flatWin, winner, tie) = game.checkFlatWin()
     if flatWin:
+        color = winner
         return true
-    return game.checkTak()[0]
+
+    let (takWin, takWinner) = game.checkTak()
+    if takWin:
+        color = takWinner
+        return true
+    return false
 
 proc recalculateMetadata*(game: var Game) =
     game.meta = default(Metadata[game.N])
