@@ -28,12 +28,12 @@ proc alphaBeta(game: var Game, evalFun: EvalFunc, pv: var seq[Move], alpha: var 
         if ?err:
             continue
         if maximizingPlayer:
-            alpha = max(alpha, alphaBeta(toMove, pv, alpha, beta, depth - 1, false))
+            alpha = max(alpha, alphaBeta(toMove, evalFun, pv, alpha, beta, depth - 1, false))
             # echo &"Alpha: {alpha}, Beta: {beta}"
             if beta <= alpha:
                 break
         else:
-            beta = min(beta, alphaBeta(toMove, pv, alpha, beta, depth - 1, true))
+            beta = min(beta, alphaBeta(toMove, evalFun, pv, alpha, beta, depth - 1, true))
             # echo &"Alpha: {alpha}, Beta: {beta}"
             if beta <= alpha:
                 break
