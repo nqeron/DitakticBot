@@ -7,6 +7,7 @@ import ../analysis/evaluation
 import ../play/player
 import ../util/error
 import std/parseopt, std/parseutils, std/strformat, std/strutils, std/times
+import ../util/makeStatic
 
 
 
@@ -17,90 +18,28 @@ const size6 = 6'u
 const size7 = 7'u
 const size8 = 8'u
 
+proc analyzeNewGameBySize(sSize: static uint, cfg: Config): Error =
+    # let cfg = vargs[0]
+    let (game, err) = newGame(sSize)
+    if ?err:
+        return err
+    let (eval, pv) = analyze(game, cfg)
+    echo &"info score cp {eval} pv {pv}"
+
+proc analyzeTPSbySize(sSize: static uint, tps: string, swap: bool, halfKomi: int8, cfg: Config): Error =
+    let (game, err) = parseGame(tps, sSize, swap, halfKomi)
+    if ?err:
+        return err
+    let (eval, pv) = analyze(game, cfg)
+    echo &"info score cp {eval} pv {pv}"
+
+
 proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: Config): Error =
         
-        
-        
         if tps == "":
-            case size:
-            of size3:
-                let (game, err) = newGame(size3)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size4:
-                let (game, err) = newGame(size4)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size5:
-                let (game, err) = newGame(size5)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size6:
-                let (game, err) = newGame(size6)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size7:
-                let (game, err) = newGame(size7)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size8:
-                let (game, err) = newGame(size8)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            else:
-                return newError("Invalid board size")
+            chooseSize(size, analyzeNewGameBySize, cfg)
         else:
-            case size:
-            of size3:
-                let (game, err) = parseGame(tps, size3, swap, halfKomi)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size4:
-                let (game, err) = parseGame(tps, size4, swap, halfKomi)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size5:
-                let (game, err) = parseGame(tps, size5, swap, halfKomi)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size6:
-                let (game, err) = parseGame(tps, size6, swap, halfKomi)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size7:
-                let (game, err) = parseGame(tps, size7, swap, halfKomi)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            of size8:
-                let (game, err) = parseGame(tps, size8, swap, halfKomi)
-                if ?err:
-                    return err
-                let (eval, pv) = analyze(game, cfg)
-                echo &"info score cp {eval} pv {pv}"
-            else:
-                return newError("Invalid board size")
+            chooseSize(size, analyzeTPSbySize, tps, swap, halfKomi, cfg)
 
 const NimblePkgVersion {.strdefine.} = ""
 const NimblePkgAuthor {.strdefine.} = ""

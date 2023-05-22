@@ -19,7 +19,7 @@ task debug, "Build debug":
     binDir = 
         when defined(windows): "bin/debug/windows" 
         else: 
-            when definde(macosx): "bin/debug/osx"
+            when defined(macosx): "bin/debug/osx"
             else: "bin/debug/other"
         
     exec "nimble build"
