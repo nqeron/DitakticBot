@@ -10,29 +10,43 @@ import std/strformat
 import util/error
 
 
-# let (play, move, err) = parseMove("3a3>1211", 5)
-# if ?err:
-#     echo $err
-# echo play, move
+import std/parseopt
 
-#mainLoop()
-teiLoop()
-# let move = newMove(newSquare(1,1,), Place.flat)
+const NimblePkgVersion {.strdefine.} = ""
 
-# var (game, err) = parseGame("x6/x6/x6/x6/x6/x6 2 1", true)
+var p = initOptParser()
 
-# #var game = newGame(6'u8, 2'i8, true)
+var idx = 0
+var launchTei = false
+var launchAnalyze = false
+var launchPlaytak = false
 
 
-# if ?err:
-#     echo $err
-# else:
-#     echo $game
-    
-#     let move = newMove(newSquare(1,1), Place.flat)
-#     echo move
-#     err = game.play(move)
-#     if ?err:
-#         echo $err
-#     else:
-#         echo game.toTps
+proc writeHelp() =
+    echo "p tei [--debug 0/1]"
+    echo "p analyze [--file ptn]"
+    echo "p playtak"
+
+proc writeVersion() =
+    echo &"{NimblePkgVersion}"
+
+for kind, key, val in p.getopt():
+  case kind
+  of cmdArgument:
+    if idx == 0 and key == "tei":
+        launchTei = true
+    elif idx == 0 and key == "analyze":
+        launchAnalyze = true
+    elif idx == 0 and key == "playtak":
+        launchPlaytak = true
+    else:
+        writeHelp()    
+  of cmdLongOption, cmdShortOption:
+    case key
+    of "help", "h": writeHelp()
+    of "version", "v": writeVersion()
+  of cmdEnd: assert(false) # cannot happen
+  idx += 1
+
+if launchTei:
+    teiLoop()

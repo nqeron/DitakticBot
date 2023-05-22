@@ -1,6 +1,6 @@
 # main package
 
-version = "0.0.1"
+version = "0.0.5"
 author = "Noah Fields (nqeron)"
 description = "DitakticBot"
 license = "MIT"
