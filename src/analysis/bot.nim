@@ -65,6 +65,8 @@ proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
         # let pvTmpStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
         # echo &"pvTmpStr: {pvTmpStr}"
 
+        let pvCStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
+        echo &"pvCount: {pv.len}, pv: {pvCStr}"
         let bestMove = pv[0]
         
         pvSeq.add(bestMove)
@@ -72,6 +74,10 @@ proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
         if ?err:
             echo &"Error: {err}"
             break
+
+        let timeNow = now()
+
+        # echo &"timeNow: {timeNow}, timeStart:{timeStart}"
         let elapsed = (now() - timeStart).inMilliseconds
         let pvStr = pvSeq.mapIt(it.ptnVal(game.N)).join(" ")
 
@@ -91,7 +97,7 @@ proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
 
 proc getAIMove*(game: Game, cfg: AnalysisConfig): (PlayType, Move, Error) =
     #let (evalFun, _, _) = 15'u8.getDifficultyPresets(game.N)
-    let (eval, bestMove) = iterDeep(game, anConfig)
+    let (eval, bestMove) = iterDeep(game, cfg)
     return (PlayType.move, bestMove, default(Error))
 
 proc analyze*(game: Game, cfg: AnalysisConfig): (EvalType, string) =

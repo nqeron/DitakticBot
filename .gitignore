@@ -1,4 +1,4 @@
-bin/main.exe
+bin*
 tests/tileTest.exe
 tests/testMove.exe
 tests/testGame.exe

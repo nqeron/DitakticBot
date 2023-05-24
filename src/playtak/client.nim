@@ -201,13 +201,20 @@ proc processAnalysisSettings(ws: WebSocket, cmd: string, cfg: AnalysisConfig): F
         
         if option == "level":
             try:
-                let level = uint8 parseUInt(valueStr)
+                let level: int = parseInt(valueStr)
                 await ws.tell(tell, player, &"setting ditakticBot analysis level to {level}")
-                return (AnalysisConfig(level: level, initDepth: cfg.initDepth, depth: cfg.depth, maxDuration: cfg.maxDuration), default(Error))
+                return (newConfig(level), default(Error))
             except ValueError:
                 await ws.tell(tell, player, &"level command must have a valid integer value")
                 return (default(AnalysisConfig), newError("Invalid level setting"))
         
+        if option == "evalLevel":
+            let (level, err) = parseAnalysisLevel(valueStr)
+            if not ?err:
+                await ws.tell(tell, player, &"setting evvalLevel to {level}")
+                return (AnalysisConfig(level: level, initDepth: cfg.initDepth, depth: cfg.depth, maxDuration: cfg.maxDuration), default(Error))
+            return (default(AnalysisConfig), err)
+
         if option == "initDepth":
             try:
                 let initDepth = parseUInt(valueStr)

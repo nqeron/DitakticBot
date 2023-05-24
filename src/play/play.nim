@@ -4,7 +4,7 @@ import ../tak/tps as tpsParse
 from ../tak/tile import Color
 import player
 import ../util/error, ../util/makeStatic
-import ../analysis/evaluation
+import ../analysis/evaluation, ../analysis/bot
 import std/parseopt, std/parseutils, std/strformat
 
 
@@ -61,7 +61,7 @@ proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err
 proc chooseGameLoopBySize(size: static uint, tps: string, level: int, wPlayer: Actor, bPlayer: Actor, komi: int8, swap: bool = true): Error =
     
     let (game, crErr) =
-        if not tps == "":
+        if tps != "":
             parseGame(tps, size, swap, komi)
         else:
             newGame(size, komi, swap)
@@ -75,11 +75,11 @@ proc chooseGameLoopBySize(size: static uint, tps: string, level: int, wPlayer: A
 
 proc initGame(): Error =
 
-    var p = initOptParser(shortNoVal = {'h'}, longNoVal = @["help", "noSwap"])
+    var p = initOptParser("", shortNoVal = {'h'}, longNoVal = @["help", "noSwap"])
 
     var wPlayer = human
     var bPlayer = human
-    var komi = 2
+    var komi: int8
     var size: uint = 6
     var swap = true
     var tps: string
@@ -112,16 +112,21 @@ proc initGame(): Error =
                 if val.parseUInt(size) != 1:
                     return newError("size too long")
             of "komi": 
-                if val.parseInt(komi) != 1:
+                var komiInt: int
+                if val.parseInt(komiInt) != 1:
+                    komi = int8 komiInt
                     return newError("Komi too long")
             of "noSwap": swap = false
             of "tps": tps = val
-            of "levelWhite":
-               val.parseInt(levelWhite)
-            of "levelBlack":
-               val.parseInt(levelBlack)
-            of "levelAnalysis"
-               val.parseInt(levelAnalysis) 
+            of "levelWhite": 
+                if val.parseInt(levelWhite) <= 0:
+                    return newError("Invalid level for white")
+            of "levelBlack": 
+                if val.parseInt(levelBlack) <= 0:
+                    return newError("Invalid level for black")
+            of "levelAnalysis": 
+                if val.parseInt(levelAnalysis) <= 0:
+                    return newError("Invalid analysis level") 
             else: return newError(&"Option key {key} is invalid")
             
     if (wPlayer != ai and levelWhite != 0) or (bPlayer != ai and levelBlack != 0):

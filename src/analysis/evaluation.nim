@@ -4,6 +4,7 @@
 import ../tak/game
 import std/times
 import ../tak/tile
+import ../util/error
 
 type
     EvalType* = int32
@@ -119,3 +120,10 @@ proc newConfig*(level: int): AnalysisConfig =
 
 proc `default`*(t:typedesc[AnalysisConfig]): AnalysisConfig =
     return newConfig(6)
+
+proc parseAnalysisLevel*(lvl: string): (AnalysisLevel, Error) =
+    case lvl:
+    of "1", "e", "easy": (easy, default(Error))
+    of "2","m", "med", "medium": (medium, default(Error))
+    of "3", "h", "hard": (hard, default(Error))
+    else: (default(AnalysisLevel), newError("Invalid analysis level"))

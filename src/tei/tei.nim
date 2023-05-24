@@ -41,7 +41,8 @@ proc teiLoop*() =
     var size = 6'u
     var swap = true
     var tps = ""
-    var level: uint8 = 5'u8
+    var level = 5
+    var debug = false
     
     while true:
         let message = readLine(stdin)
@@ -56,13 +57,27 @@ proc teiLoop*() =
             echo &"id author {NimblePkgAuthor}"
             echo "option name HalfKomi type spin default 2 min -10 max 10"
             echo "option name Swap type check default true"
-            echo "option name Level type spin default 2 min 1 max 3"
+            echo "option name Level type spin default 2 min 1 max 40"
             echo "teiok"
         of "isready":
             echo "readyok"
+        of "debug":
+            if parts.len != 2:
+                echo "debug takes a value"
+                continue
+
+            if parts[1] == "on":
+                debug = true
+            elif parts[1] == "off":
+                debug = false
+            else:
+                echo "invalid value"
         of "setoption":
-            let name = parts[1].split("=")[1]
-            let value = parts[2].split("=")[1]
+            if parts.len != 5 or parts[1] != "name" or parts[3] != "value":
+                echo "Invalid setoption command"
+                continue
+            let name = parts[2]
+            let value = parts[4]
             case name:
             of "HalfKomi":
                 halfKomi = int8 parseInt(value)
@@ -70,8 +85,7 @@ proc teiLoop*() =
             of "Swap":
                 swap = value == "true"
             of "Level":
-                level = uint8 parseUInt(value)
-                assert level >= 1 and level <= 3, "Invalid level"
+                level = parseInt(value)
         of "teinewgame":
             if parts.len < 2:
                 size = 6'u
@@ -102,7 +116,9 @@ proc teiLoop*() =
                 continue
         of "go":
             #ignore depth and duration for now
-            let cfg = newConfig(level)
+            let cfg: AnalysisConfig = newConfig(level)
+            if debug:
+                echo "AnalysisConfig: ", cfg
             let err = chooseAnalysis(tps, size, swap, halfKomi, cfg)
             if ?err:
                 echo &"error: {$err}"
