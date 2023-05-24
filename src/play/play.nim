@@ -53,6 +53,8 @@ proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err
                 echo $err
                 return err
             else:
+                let (eval, pv) = nextPos.analyze(cfg)
+                echo &"eval: {eval}, pv:{pv}"
                 curState = nextPos
                 positionHistory.add(game)
 
@@ -73,7 +75,7 @@ proc chooseGameLoopBySize(size: static uint, tps: string, level: int, wPlayer: A
 
 proc initGame(): Error =
 
-    var p = initOptParser(shortNoVal = {'h'}, longNoVal = @["help", "noSwap" ])
+    var p = initOptParser(shortNoVal = {'h'}, longNoVal = @["help", "noSwap"])
 
     var wPlayer = human
     var bPlayer = human
@@ -81,7 +83,9 @@ proc initGame(): Error =
     var size: uint = 6
     var swap = true
     var tps: string
-    var level: int
+    var levelWhite: int
+    var levelBlack: int
+    var levelAnalysis: int 
 
     var err: Error
 
@@ -95,12 +99,12 @@ proc initGame(): Error =
             case key
             of "help", "h" : echo "TODO"
             of "white": 
-                (wPlayer, err) = val.parseActor()
+                (wPlayer, err) = val.parseActorKind()
                 if ?err:
                     err.add("Error parsing white actor")
                     return err
             of "black": 
-                (bPlayer, err) = val.parseActor()
+                (bPlayer, err) = val.parseActorKind()
                 if ?err:
                     err.add("Error parsing black actor")
                     return err
@@ -108,13 +112,41 @@ proc initGame(): Error =
                 if val.parseUInt(size) != 1:
                     return newError("size too long")
             of "komi": 
-                komi = int8 parseInt(val)
+                if val.parseInt(komi) != 1:
+                    return newError("Komi too long")
             of "noSwap": swap = false
             of "tps": tps = val
-            of "level": level = parseInt(val)
+            of "levelWhite":
+               val.parseInt(levelWhite)
+            of "levelBlack":
+               val.parseInt(levelBlack)
+            of "levelAnalysis"
+               val.parseInt(levelAnalysis) 
             else: return newError(&"Option key {key} is invalid")
+            
+    if (wPlayer != ai and levelWhite != 0) or (bPlayer != ai and levelBlack != 0):
+        return newError("can't instantiate level for a non ai player")
+        
+    let wActor =
+        case wPlayer:
+        of ai:
+            Actor(kind: ai, cfg: newConfig(levelWhite))
+        of human:
+            Actor(kind: human)
+        of playtak:
+            Actor(kind: playtak)   
+    
+    let bActor =
+        case bPlayer:
+        of ai:
+            Actor(kind: ai, cfg: newConfig(levelBlack))
+        of human:
+            Actor(kind: human)
+        of playtak:
+            Actor(kind: playtak)
+              
 
-    chooseSize(size, chooseGameLoopBySize, tps, level, wPlayer, bPlayer, komi, swap)
+    chooseSize(size, chooseGameLoopBySize, tps, levelAnalysis, wActor, bActor, komi, swap)
 
 proc mainLoop*() = 
 

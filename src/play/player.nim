@@ -14,8 +14,8 @@ type
         of ai: aiVal*: MinMax
         of playTak: playTakVal*: PlayTak
 
-proc parseActor*(actStr: string): (Actor, Error) =
-    if actStr == "": return (default(Actor), newError("Actor string is empty"))
+proc parseActorKind*(actStr: string): (ActorKind, Error) =
+    if actStr == "": return (default(ActorKind), newError("Actor string is empty"))
     case actStr
     of "h", "human":
         (human, default(Error))
@@ -24,7 +24,7 @@ proc parseActor*(actStr: string): (Actor, Error) =
     of "p", "pl", "pt", "playtak":
         (playtak, default(Error))
     else:
-        (default(Actor), newError(&"Actor is invalid {actStr}"))
+        (default(ActorKind), newError(&"Actor is invalid {actStr}"))
 
 proc getMove*(actor: Actor, game: Game): (PlayType, Move, Error) =
     case actor.kind
