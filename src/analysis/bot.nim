@@ -7,7 +7,7 @@ import ../util/error
 from ../tak/tile import Color
 import std/times, std/sequtils, std/strutils, std/random
 
-proc alphaBeta(game: var Game, cfg: Config, pv: var seq[Move], alpha: var EvalType, beta: var EvalType, depth: uint, maximizingPlayer: bool): EvalType =
+proc alphaBeta(game: var Game, cfg: AnalysisConfig, pv: var seq[Move], alpha: var EvalType, beta: var EvalType, depth: uint, maximizingPlayer: bool): EvalType =
     
     var clr: Color
     let isOver = game.isOver(clr)
@@ -44,16 +44,18 @@ proc alphaBeta(game: var Game, cfg: Config, pv: var seq[Move], alpha: var EvalTy
 
     return if maximizingPlayer: alpha else: beta
 
-proc iterDeep(gameO: Game, cfg: Config): (EvalType, Move) =
+proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
     var alpha = EvalType.low
     var beta = EvalType.high
     # echo &"alpha: {alpha}, beta: {beta}"
     let timeStart = now()
     var game = gameO
 
+    let initDepth = if cfg.initDepth == 0'u: 1'u else: cfg.initDepth  
+
     # var bestMove: Move
     var pvSeq: seq[Move]
-    for i in 1'u .. cfg.depth:
+    for i in initDepth .. cfg.depth + initDepth:
         # echo &"Starting depth {i}"
         var pv: seq[Move]
         alpha = EvalType.low
@@ -87,13 +89,12 @@ proc iterDeep(gameO: Game, cfg: Config): (EvalType, Move) =
         
     return (alpha, pvSeq[0])
 
-proc getAIMove*(game: Game, depth: uint = 5'u, durationMax: Duration = initDuration(seconds = 15)): (PlayType, Move, Error) =
+proc getAIMove*(game: Game, cfg: AnalysisConfig): (PlayType, Move, Error) =
     #let (evalFun, _, _) = 15'u8.getDifficultyPresets(game.N)
-
-    let (eval, bestMove) = iterDeep(game, newConfig(6'u8, 4'u, initDuration(seconds = 25)))
+    let (eval, bestMove) = iterDeep(game, anConfig)
     return (PlayType.move, bestMove, default(Error))
 
-proc analyze*(game: Game, cfg: Config): (EvalType, string) =
+proc analyze*(game: Game, cfg: AnalysisConfig): (EvalType, string) =
 
     let (eval, bestMove) = iterDeep(game, cfg)
     return (eval, bestMove.ptnVal(game.N))

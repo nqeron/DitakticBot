@@ -9,16 +9,7 @@ import ../util/error
 import std/parseopt, std/parseutils, std/strformat, std/strutils, std/times
 import ../util/makeStatic
 
-
-
-const size3 = 3'u
-const size4 = 4'u
-const size5 = 5'u
-const size6 = 6'u
-const size7 = 7'u
-const size8 = 8'u
-
-proc analyzeNewGameBySize(sSize: static uint, cfg: Config): Error =
+proc analyzeNewGameBySize(sSize: static uint, cfg: AnalysisConfig): Error =
     # let cfg = vargs[0]
     let (game, err) = newGame(sSize)
     if ?err:
@@ -26,7 +17,7 @@ proc analyzeNewGameBySize(sSize: static uint, cfg: Config): Error =
     let (eval, pv) = analyze(game, cfg)
     echo &"info score cp {eval} pv {pv}"
 
-proc analyzeTPSbySize(sSize: static uint, tps: string, swap: bool, halfKomi: int8, cfg: Config): Error =
+proc analyzeTPSbySize(sSize: static uint, tps: string, swap: bool, halfKomi: int8, cfg: AnalysisConfig): Error =
     let (game, err) = parseGame(tps, sSize, swap, halfKomi)
     if ?err:
         return err
@@ -34,7 +25,7 @@ proc analyzeTPSbySize(sSize: static uint, tps: string, swap: bool, halfKomi: int
     echo &"info score cp {eval} pv {pv}"
 
 
-proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: Config): Error =
+proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: AnalysisConfig): Error =
         
         if tps == "":
             chooseSize(size, analyzeNewGameBySize, cfg)
@@ -111,7 +102,7 @@ proc teiLoop*() =
                 continue
         of "go":
             #ignore depth and duration for now
-            let cfg = newConfig(level, 8'u, initDuration(minutes = 1))
+            let cfg = newConfig(level)
             let err = chooseAnalysis(tps, size, swap, halfKomi, cfg)
             if ?err:
                 echo &"error: {$err}"

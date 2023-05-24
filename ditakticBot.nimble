@@ -14,6 +14,7 @@ skipExt = @["nim"]
 
 requires "nim >= 1.6.10"
 requires "regex"
+requires "ws >= 0.5.0"
 
 task debug, "Build debug":
     binDir = 

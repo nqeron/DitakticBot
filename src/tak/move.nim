@@ -151,18 +151,18 @@ proc parseMove*(moveString: string, boardSize: uint): (PlayType, Move, Error) =
 
     
 
-proc nextInDir*(square: Square, direction: Direction): Square =
+proc nextInDir*(square: Square, direction: Direction, amt: uint = 1): Square =
     case direction:
     of up:
-        (row: square.row - 1, column: square.column)
+        (row: square.row - amt, column: square.column)
     of down:
-        (row: square.row + 1, column: square.column)
+        (row: square.row + amt, column: square.column)
     of left:
-        (row: square.row, column: square.column - 1)
+        (row: square.row, column: square.column - amt)
     of right:
-        (row: square.row, column: square.column + 1)
+        (row: square.row, column: square.column + amt)
 
-proc ptnVal(square: Square, size: uint): string =
+proc ptnVal*(square: Square, size: uint): string =
     if square.row >= size or square.column >= size: return ""
     let colPTN = 
         case square.column
@@ -207,3 +207,35 @@ proc ptnVal*(move: Move, size: uint, expanded: bool = false): string =
         let stackAmtStr = if expanded or stackAmt > 1: $stackAmt else: ""
 
         return  &"{stackAmtStr}{move.square.ptnVal(size)}{$spread.direction}{pattStr}"
+
+proc parseSquare*(squareStr: string, size: uint): (Square, Error) =
+
+    match squareStr, rex"^([a-hA-H])([1-8])$":
+        let (col, _) = matches[0].toLower.toColNum
+        let row = size - parseUInt(matches[1]) 
+        # - 1'u
+        let sq = newSquare(row, col)
+
+        return (sq, default(Error))
+
+    return (default(Square), newError("Invalid square"))
+
+proc dirTo*(sqFrom: Square, sqTo: Square): (Direction, Error) =
+    if sqFrom.row < sqTo.row:
+        (down, default(Error))
+    elif sqFrom.row > sqTo.row:
+        (up, default(Error))
+    elif sqFrom.column < sqTo.column:
+        (right, default(Error))
+    elif sqFrom.column > sqTo.column:
+        (left, default(Error))
+    else:
+        (default(Direction), newError("identical squares"))
+
+# proc getToSquareFromMove*(move: Move): Square =
+#     case move.direction:
+#     of up: return newSquare(row + move.pattSeq.len, col)
+#     of down: return newSquare(row + move.pattSeq.len, col)
+#     of up: return newSquare(row + move.pattSeq.len, col)
+#     of up: return newSquare(row + move.pattSeq.len, col)
+

@@ -5,8 +5,14 @@ import std/strformat
 import ../analysis/bot
 
 type
-    Actor* = enum
-        human, ai, playtak
+    ActorKind* = enum
+        human, ai, playtak 
+
+    Actor* = object
+        case kind*: ActorKind
+        of human: humanVal: Human
+        of ai: aiVal*: MinMax
+        of playTak: playTakVal*: PlayTak
 
 proc parseActor*(actStr: string): (Actor, Error) =
     if actStr == "": return (default(Actor), newError("Actor string is empty"))
@@ -21,12 +27,13 @@ proc parseActor*(actStr: string): (Actor, Error) =
         (default(Actor), newError(&"Actor is invalid {actStr}"))
 
 proc getMove*(actor: Actor, game: Game): (PlayType, Move, Error) =
-    case actor
+    case actor.kind
     of human:
         let moveStr = readLine(stdin)
         return parseMove(moveStr, game.N)
     of ai:
-        let (playType, move, error) = getAIMove(game)
+        let minMax: MinMax = actor.aiVal
+        let (playType, move, error) = getAIMove(game, minMax.analysisConfig)
         if not ?error:
             echo &"AI move: {move}"
         return (playType, move, error)

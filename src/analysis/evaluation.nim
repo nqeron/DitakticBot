@@ -9,8 +9,15 @@ type
     EvalType* = int32
     EvalFunc*[N: static uint] = proc (game: Game[N], clr: Color): EvalType
 
+    AnalysisLevel* = enum
+        easy, medium, hard
+
     Evaluation = distinct EvalType
-    Config* = tuple[level: uint8, depth: uint, maxDuration: Duration]
+    AnalysisConfig* = object
+        level*: AnalysisLevel
+        initDepth*: uint
+        depth*: uint
+        maxDuration*: Duration
 
 const Win: EvalType = 100_000
 const WinThreshold: EvalType = 99_000
@@ -55,14 +62,13 @@ proc hardEval(game: Game, clr: Color): EvalType =
 
 
 
-proc evalByConfig(game: Game, cfg: Config, clr: Color): EvalType =
+proc evalByConfig(game: Game, cfg: AnalysisConfig, clr: Color): EvalType =
     case cfg.level:
-    of 1'u8: return easyEval(game, clr)
-    of 2'u8: return midEval(game, clr)
-    of 3'u8: return hardEval(game, clr)
-    else: return midEval(game, clr)
+    of easy: return easyEval(game, clr)
+    of medium: return midEval(game, clr)
+    of hard: return hardEval(game, clr)
 
-proc evaluate*(game: Game, cfg: Config, maxPlayer: bool, isOver: bool = false, resColor: Color = Color.white): EvalType =
+proc evaluate*(game: Game, cfg: AnalysisConfig, maxPlayer: bool, isOver: bool = false, resColor: Color = Color.white): EvalType =
 
     if isOver:
         if maxPlayer:
@@ -82,7 +88,34 @@ proc evaluate*(game: Game, cfg: Config, maxPlayer: bool, isOver: bool = false, r
     # return EvalType (game.meta.pieceCount(clr, flat) * 100 + game.meta.pieceCount(clr, cap) * 200 +
     #      game.meta.pieceCount(clr, wall) * 10)
 
-template newConfig*(lvl: uint8, dpth, dur): Config =
-     (level: lvl, depth: dpth, maxDuration: dur)
+proc newConfig*(level: int): AnalysisConfig =
 
+    var lvl: AnalysisLevel =
+        case (level mod 12):
+        of 1,2,3,4: easy
+        of 5,6,7,8: medium
+        of 9,10,11,0: hard
+        else: medium
 
+    let initDepth: uint =
+        case (level mod 48):
+        of 1,2,3,4,5,6,7,8,9,10,11,12: 1'u
+        of 13,14,15,16,17,18,19,20,21,22,23,24: 2'u
+        of 25,26,27,28,29,30,31,32,33,34,35,36: 4'u
+        of 37,38,39,40,41,42,43,44,45,46,47,0: 8'u
+        else: 6'u 
+
+    let depth: uint =
+        case (level mod 4):
+        of 1: 1'u
+        of 2: 2'u
+        of 3: 4'u
+        of 0: 8'u
+        else: 6'u
+
+    let dur = initDuration(seconds = int (initDepth * depth * 10))
+
+    return AnalysisConfig(level: lvl, initDepth: initDepth , depth: depth, maxDuration: dur)
+
+proc `default`*(t:typedesc[AnalysisConfig]): AnalysisConfig =
+    return newConfig(6)
