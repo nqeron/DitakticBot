@@ -86,6 +86,9 @@ proc teiLoop*() =
                 swap = value == "true"
             of "Level":
                 level = parseInt(value)
+        of "getConf":
+            let cfg = newConfig(level)
+            echo "Config: ", cfg
         of "teinewgame":
             if parts.len < 2:
                 size = 6'u

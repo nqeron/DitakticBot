@@ -19,6 +19,8 @@ proc alphaBeta(game: var Game, cfg: AnalysisConfig, pv: var seq[Move], alpha: va
     let movesToTryStr = movesToTry.mapIt(it.ptnVal(game.N)).join(" ")
     # echo &"depth: {depth}. possibleMoves: {movesToTryStr}"
     var moveOpts: seq[Move]
+    var curAlpha = EvalType.low
+    var curBeta = EvalType.high
     for move in movesToTry:
         # echo &"Trying move {move.ptnVal(game.N)} at depth {depth}"
         var toMove = game
@@ -28,21 +30,26 @@ proc alphaBeta(game: var Game, cfg: AnalysisConfig, pv: var seq[Move], alpha: va
         if ?err:
             continue
         if maximizingPlayer:
-            alpha = max(alpha, alphaBeta(toMove, cfg, pv, alpha, beta, depth - 1, false))
-            # echo &"Alpha: {alpha}, Beta: {beta}"
-            if beta <= alpha:
+            # echo &"pre alpha: {alpha}, beta: {beta}"
+            curAlpha = max(curAlpha, alphaBeta(toMove, cfg, pv, alpha, beta, depth - 1, false))
+            # echo &"post Alpha: {alpha}, Beta: {beta}"
+            if beta < curAlpha:
                 break
+            
+            alpha = max(alpha, curAlpha)
         else:
-            beta = min(beta, alphaBeta(toMove, cfg, pv, alpha, beta, depth - 1, true))
+            curBeta = min(curBeta, alphaBeta(toMove, cfg, pv, alpha, beta, depth - 1, true))
             # echo &"Alpha: {alpha}, Beta: {beta}"
-            if beta <= alpha:
+            if curBeta <= alpha:
                 break
+            
+            beta = min(beta, curBeta)
         # pv.delete(pv.len - 1, 1)
         
     let pvStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
     # echo &"pvAB: {pvStr}, depth: {depth}"
 
-    return if maximizingPlayer: alpha else: beta
+    return if maximizingPlayer: curAlpha else: curBeta
 
 proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
     var alpha = EvalType.low
@@ -66,7 +73,7 @@ proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
         # echo &"pvTmpStr: {pvTmpStr}"
 
         let pvCStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
-        echo &"pvCount: {pv.len}, pv: {pvCStr}"
+        echo &"pvCount: {pv.len}"
         let bestMove = pv[0]
         
         pvSeq.add(bestMove)
