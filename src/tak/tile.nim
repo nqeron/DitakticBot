@@ -205,6 +205,12 @@ proc numVal*(clr: Color): int =
     of white: 1
     of black: 2
 
+proc parseColorString*(clrString: string):  Color {. raises: ValueError .} =
+    case clrString:
+    of "white": white
+    of "black": black
+    else: raise new ValueError
+
 proc `not`*(clr: Color): Color =
     case clr
     of white: return black

@@ -3,22 +3,17 @@ import ../tak/move as mv
 import ../tak/tps as tpsParse
 from ../tak/tile import Color
 import player
-import ../util/error
+import ../util/error, ../util/makeStatic
+import ../analysis/evaluation, ../analysis/bot
 import std/parseopt, std/parseutils, std/strformat
+
+
 
 type
     Play = enum
         move, undo
     # BoardSize = enum
     #     size3 = 3'u, size4 = 4'u, size5 = 5'u, size6 = 6'u, size7 = 7'u, size8 = 8'u
-
-
-const size3: uint = 3'u
-const size4: uint = 4'u
-const size5: uint = 5'u
-const size6: uint = 6'u
-const size7: uint = 7'u
-const size8: uint = 8'u
 
 
 proc getMoveFromPlayer*(game: Game, wPlayer: Actor, bPlayer: Actor): (PlayType, Move, Error) =
@@ -28,7 +23,7 @@ proc getMoveFromPlayer*(game: Game, wPlayer: Actor, bPlayer: Actor): (PlayType, 
     of black:
         return bPlayer.getMove(game)
 
-proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err: Error): Error =
+proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err: Error, cfg: AnalysisConfig): Error =
     if ?err:
         echo $err
         return err
@@ -58,19 +53,39 @@ proc gameLoop[N: static uint](game: Game[N], wPlayer: Actor, bPlayer: Actor, err
                 echo $err
                 return err
             else:
+                let (eval, pv) = nextPos.analyze(cfg)
+                echo &"eval: {eval}, pv:{pv}"
                 curState = nextPos
                 positionHistory.add(game)
 
+proc chooseGameLoopBySize(size: static uint, tps: string, level: int, wPlayer: Actor, bPlayer: Actor, komi: int8, swap: bool = true): Error =
+    
+    let (game, crErr) =
+        if tps != "":
+            parseGame(tps, size, swap, komi)
+        else:
+            newGame(size, komi, swap)
+    
+    if ?crErr:
+            return crErr
+
+    let cfg: AnalysisConfig = newConfig(level)
+    return gameLoop(game, wPlayer, bPlayer, crErr, cfg)
+
+
 proc initGame(): Error =
 
-    var p = initOptParser(shortNoVal = {'h'}, longNoVal = @["help", "white", "black", "size", "komi", "noSwap", "tps"])
+    var p = initOptParser("", shortNoVal = {'h'}, longNoVal = @["help", "noSwap"])
 
     var wPlayer = human
     var bPlayer = human
-    var komi = 2
+    var komi: int8
     var size: uint = 6
     var swap = true
     var tps: string
+    var levelWhite: int
+    var levelBlack: int
+    var levelAnalysis: int 
 
     var err: Error
 
@@ -84,12 +99,12 @@ proc initGame(): Error =
             case key
             of "help", "h" : echo "TODO"
             of "white": 
-                (wPlayer, err) = val.parseActor()
+                (wPlayer, err) = val.parseActorKind()
                 if ?err:
                     err.add("Error parsing white actor")
                     return err
             of "black": 
-                (bPlayer, err) = val.parseActor()
+                (bPlayer, err) = val.parseActorKind()
                 if ?err:
                     err.add("Error parsing black actor")
                     return err
@@ -97,56 +112,46 @@ proc initGame(): Error =
                 if val.parseUInt(size) != 1:
                     return newError("size too long")
             of "komi": 
-                if val.parseInt(komi) != 1: 
-                    return newError("komi is too long")
+                var komiInt: int
+                if val.parseInt(komiInt) != 1:
+                    komi = int8 komiInt
+                    return newError("Komi too long")
             of "noSwap": swap = false
             of "tps": tps = val
+            of "levelWhite": 
+                if val.parseInt(levelWhite) <= 0:
+                    return newError("Invalid level for white")
+            of "levelBlack": 
+                if val.parseInt(levelBlack) <= 0:
+                    return newError("Invalid level for black")
+            of "levelAnalysis": 
+                if val.parseInt(levelAnalysis) <= 0:
+                    return newError("Invalid analysis level") 
             else: return newError(&"Option key {key} is invalid")
+            
+    if (wPlayer != ai and levelWhite != 0) or (bPlayer != ai and levelBlack != 0):
+        return newError("can't instantiate level for a non ai player")
+        
+    let wActor =
+        case wPlayer:
+        of ai:
+            Actor(kind: ai, cfg: newConfig(levelWhite))
+        of human:
+            Actor(kind: human)
+        of playtak:
+            Actor(kind: playtak)   
+    
+    let bActor =
+        case bPlayer:
+        of ai:
+            Actor(kind: ai, cfg: newConfig(levelBlack))
+        of human:
+            Actor(kind: human)
+        of playtak:
+            Actor(kind: playtak)
+              
 
-    if tps != "":
-        case size:
-        of 3'u: 
-            let (game, crErr) = parseGame(tps, size3, swap, int8 komi)
-            return gameLoop(game, wPlayer, bPlayer, crErr)
-        of 4'u:
-            let (game, crErr) = parseGame(tps, size4, swap, int8 komi)
-            return gameLoop[size4](game, wPlayer, bPlayer, crErr)
-        of 5'u:
-            let (game, crErr) = parseGame(tps, size5, swap, int8 komi)
-            return gameLoop(game, wPlayer, bPlayer, crErr)
-        of 6'u:
-            let (game, crErr) = parseGame(tps, size6, swap, int8 komi)
-            return gameLoop(game, wPlayer, bPlayer, crErr)
-        of 7'u:
-            let (game, crErr) = parseGame(tps, size7, swap, int8 komi)
-            return gameLoop(game, wPlayer, bPlayer, crErr)
-        of 8'u:
-            let (game, crErr) = parseGame(tps, size8, swap, int8 komi)
-            return gameLoop(game, wPlayer, bPlayer, crErr)
-        else:
-            return newError("Invalid board size")
-    else:
-        case size:
-        of size3: 
-            let (game, crErr) = newGame(size3, int8 komi, swap)
-            gameLoop(game, wPlayer, bPlayer, crErr)        
-        of size4:
-            let (game, crErr) = newGame(size4, int8 komi, swap)
-            gameLoop(game, wPlayer, bPlayer, crErr)
-        of size5:
-            let (game, crErr) = newGame(size5, int8 komi, swap)
-            gameLoop(game, wPlayer, bPlayer, crErr)
-        of size6:
-            let (game, crErr) = newGame(size6, int8 komi, swap)
-            gameLoop(game, wPlayer, bPlayer, crErr)
-        of size7:
-            let (game, crErr) = newGame(size7, int8 komi, swap)
-            gameLoop(game, wPlayer, bPlayer, crErr)
-        of size8:
-            let (game, crErr) = newGame(size8, int8 komi, swap)
-            gameLoop(game, wPlayer, bPlayer, crErr)
-        else:
-            return newError("Invalid board size")
+    chooseSize(size, chooseGameLoopBySize, tps, levelAnalysis, wActor, bActor, komi, swap)
 
 proc mainLoop*() = 
 
