@@ -36,11 +36,11 @@ If you want to customize your game, run `nimble debug` followed by running the e
 
 ### Progress ##
 
-You can play human v human games up to a move of 20
+tei is working
 
-There is no checking for victory or end game states
+playtak connection is mostly there
 
-Display back is in tps -- feel free to export to your viewer of choice!
+2 eval functions and a levelling system has been implemented.
 
 ## On Tap ##
 
