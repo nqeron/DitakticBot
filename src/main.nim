@@ -12,7 +12,9 @@ import std/strformat
 import util/error
 
 
-import std/parseopt
+import std/parseopt, std/threadpool
+
+{.experimental: "parallel".}
 
 const NimblePkgVersion {.strdefine.} = ""
 
@@ -53,4 +55,5 @@ for kind, key, val in p.getopt():
 if launchTei:
     teiLoop()
 elif launchPlaytak:
-    waitfor testConnection()
+    echo "Starting Playtak"
+    connectionLoop()
