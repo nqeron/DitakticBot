@@ -36,7 +36,7 @@ proc setupConnection*(con: var PlayTakConnection) =
     {.locks: [con.lock]}:
         con.ws = waitfor newWebSocket("ws://playtak.com:9999/ws")
         con.state[connected] = true
-        con.lock.release
+        con.lock.release()
 
 proc logOut*(con: var PlayTakConnection) =
     con.state[loggedIn] = false
@@ -82,7 +82,12 @@ proc ping*(con: var PlayTakConnection)=
 
 proc genPings*(con: var PlayTakConnection) =
     while con.isLoggedIn:
-        con.send("PING")
+        con.lock.acquire()
+        {.locks: [con.lock].}:
+            con.send("PING")
+            con.flushMessage()
+            discard con.getMessage()
+            con.lock.release()
         sleep 10000
 
 proc loginAndSetup*(con: var PlayTakConnection, username: string, password: string): Error =

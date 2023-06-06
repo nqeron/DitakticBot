@@ -6,8 +6,14 @@ import ../util/error, ../util/makeStatic
 import std/sequtils, std/times, std/threadpool
 import ../analysis/bot, ../analysis/evaluation
 import connection, gameHandles, gameConfig, customHandles
+import locks
 
 {.experimental: "parallel".}
+
+type
+    Client = object
+        lock: Lock
+        con {.guard: lock.}: PlayTakConnection
 
 # var curGames: array[5, Game]
 
