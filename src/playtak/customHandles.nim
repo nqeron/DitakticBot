@@ -3,10 +3,39 @@ import ../analysis/evaluation
 import ../util/error
 import regex
 import std/strformat, std/strutils, std/times
+import parseopt
 
 proc processAnalysisSettings*(con: var PlayTakConnection, cfg: var AnalysisConfig): Error =
 
     let cmd = con.getMessage()
+
+    match cmd, rex"^(Tell|Shout) <(\w+)> ditakticBot: (.*)$":
+        let tell = matches[0]
+        let player = matches[2]
+        let optString = matches[3]
+
+        var pOpts = initOptParser(optString)
+        var level: AnalysisLevel
+        var initDepth: uint
+        var cfgErr: Error
+
+        for kind, key, val in pOpts.getopt():
+            case kind:
+            of cmdEnd: discard #does this happen?
+            of cmdShortOption, cmdLongOption:
+                case key:
+                of "level":
+                    let (lvl, err) = parseAnalysisLevel(val)
+                    if ?err:
+                        cfgErr.add($err, true)
+                    level = lvl
+                of "initDepth", "lookAhead":
+                    try:
+                        initDepth = parseUInt(val)
+                    except ValueError:
+                        cfgErr.add(&"{key} is not a valid uint", true)
+                else: discard #gen errors for not recognized options
+            of cmdArgument: discard #also gen errors
     
     match cmd, rex"^(Tell|Shout) <(\w+)> ditakticBot: (\w+)( \w+)?$":
         let tell = matches[0]
