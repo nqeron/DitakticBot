@@ -7,10 +7,6 @@ import ../util/error
 from ../tak/tile import Color
 import std/times, std/sequtils, std/strutils, std/random
 
-type
-    SearchState[N: static uint] = object  
-        game: Game[N]
-
 
 proc alphaBeta(game: var Game, cfg: AnalysisConfig, pv: var seq[Move], alpha: var EvalType, beta: var EvalType, depth: uint, maximizingPlayer: bool): EvalType =
     
@@ -26,9 +22,9 @@ proc alphaBeta(game: var Game, cfg: AnalysisConfig, pv: var seq[Move], alpha: va
     let possMoves = if depth > 1: pv[^1] & game.possibleMoves() else: game.possibleMoves()
     var movesToTry =  possMoves
     shuffle(movesToTry)
-    let movesToTryStr = movesToTry.mapIt(it.ptnVal(game.N)).join(" ")
+    # let movesToTryStr = movesToTry.mapIt(it.ptnVal(game.N)).join(" ")
     # echo &"depth: {depth}. possibleMoves: {movesToTryStr}"
-    var moveOpts: seq[Move]
+    # var moveOpts: seq[Move]
     var curAlpha = EvalType.low
     var curBeta = EvalType.high
     var found = default(Move)
@@ -64,7 +60,7 @@ proc alphaBeta(game: var Game, cfg: AnalysisConfig, pv: var seq[Move], alpha: va
     else:
         pv[^1] = found
     
-    let pvStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
+    # let pvStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
     # echo &"pvAB: {pvStr}, depth: {depth}"
 
     return if maximizingPlayer: curAlpha else: curBeta
@@ -92,12 +88,12 @@ proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
         # let pvTmpStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
         # echo &"pvTmpStr: {pvTmpStr}"
 
-        let pvCStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
+        # let pvCStr = pv.mapIt(it.ptnVal(game.N)).join(" ")
         # let bestMove = pv[0]
         
         # pvSeq.add(bestMove)
 
-        let timeNow = now()
+        # let timeNow = now()
 
         # echo &"timeNow: {timeNow}, timeStart:{timeStart}"
         let elapsed = (now() - timeStart).inMilliseconds
@@ -119,7 +115,7 @@ proc iterDeep(gameO: Game, cfg: AnalysisConfig): (EvalType, Move) =
 
 proc getAIMove*(game: Game, cfg: AnalysisConfig): (PlayType, Move, Error) =
     #let (evalFun, _, _) = 15'u8.getDifficultyPresets(game.N)
-    let (eval, bestMove) = iterDeep(game, cfg)
+    let (_, bestMove) = iterDeep(game, cfg)
     return (PlayType.move, bestMove, default(Error))
 
 proc analyze*(game: Game, cfg: AnalysisConfig): (EvalType, string) =

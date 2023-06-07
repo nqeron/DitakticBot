@@ -21,7 +21,7 @@ type
         maxDuration*: Duration
 
 const Win: EvalType = 100_000
-const WinThreshold: EvalType = 99_000
+# const WinThreshold: EvalType = 99_000
 
 proc Zero*(t: typedesc[Evaluation]): Evaluation =
     Evaluation(0)

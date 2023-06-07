@@ -4,7 +4,6 @@ import std/strformat, std/strutils, os
 from ../util/byteString import toString
 import ../util/error
 import std/atomics
-import locks
 
 type
     ConnectionFlag = enum
@@ -14,8 +13,7 @@ type
     ConnectionState* = array[5, Atomic[bool]]
 
     PlayTakConnection* = object
-        lock: Lock
-        ws {.guard: lock.}: WebSocket
+        ws: WebSocket
         state: ConnectionState
         lastMessage: string
         messageProcessed: bool
@@ -27,16 +25,13 @@ const SHOUT* = "Shout"
 proc `[]=`*(state: var ConnectionState, flag: ConnectionFlag, value: bool) =
     state[ord flag].store(value)
 
-proc `[]`*(state: var ConnectionState, flag: ConnectionFlag): bool =
-    state[ord flag].load
+proc `[]`*(state: ConnectionState, flag: ConnectionFlag): bool =
+    var z: Atomic[bool] = state[ord flag]
+    return z.load
 
 proc setupConnection*(con: var PlayTakConnection) =
-    con.lock.initLock()
-    con.lock.acquire()
-    {.locks: [con.lock]}:
-        con.ws = waitfor newWebSocket("ws://playtak.com:9999/ws")
-        con.state[connected] = true
-        con.lock.release()
+    con.ws = waitfor newWebSocket("ws://playtak.com:9999/ws")
+    con.state[connected] = true
 
 proc logOut*(con: var PlayTakConnection) =
     con.state[loggedIn] = false
@@ -44,51 +39,45 @@ proc logOut*(con: var PlayTakConnection) =
 proc logIn*(con: var PlayTakConnection) =
     con.state[loggedIn] = true    
 
-proc isLoggedIn*(con: var PlayTakConnection): bool =
+proc isLoggedIn*(con: PlayTakConnection): bool =
     return con.state[loggedIn]
 
 proc getMessage*(con: var PlayTakConnection): string =
     if con.messageProcessed or con.lastMessage == "":
-        con.lock.acquire()
-        {.locks: [con.lock].}:
-            let cmdBytes: seq[byte] = waitfor con.ws.receiveBinaryPacket()
-            let cmd = cmdBytes.toString.strip()
-            con.lastMessage = cmd
-            con.messageProcessed = false
-            con.lock.release()
+        let cmdBytes: seq[byte] = waitfor con.ws.receiveBinaryPacket()
+        let cmd = cmdBytes.toString.strip()
+        con.lastMessage = cmd
+        con.messageProcessed = false
 
     return con.lastMessage
 
 proc flushMessage*(con: var PlayTakConnection) =
     con.messageProcessed = true
 
-proc send*(con: var PlayTakConnection, message: string) =
-    con.lock.acquire()
-    {.locks: [con.lock].}:
-        waitfor con.ws.send(message)
-        con.lock.release()
+proc send*(con: PlayTakConnection, message: string): Future[void] {. async .} =
+    # echo &"Sending message:{message}"
+    # var l = con.lock
+    await con.ws.send(message)
 
 proc tell*(con: var PlayTakConnection, tellCmd: string, player: string, message: string) =
     if tellCmd == "Tell":
-        con.send(&"{tellCmd} {player} {message}")
+        waitfor con.send(&"{tellCmd} {player} {message}")
     else:
         if player != "":
-            con.send(&"{tellCmd} @{player}: {message}")
+            waitfor con.send(&"{tellCmd} @{player}: {message}")
         else:
-            con.send(&"{tellCmd} {message}")
+            waitfor con.send(&"{tellCmd} {message}")
 
-proc ping*(con: var PlayTakConnection)=
-    con.send("PING")
+proc ping*(con: ref PlayTakConnection)=
+    waitfor con.send("PING")
 
-proc genPings*(con: var PlayTakConnection) =
-    while con.isLoggedIn:
-        con.lock.acquire()
-        {.locks: [con.lock].}:
-            con.send("PING")
-            con.flushMessage()
-            discard con.getMessage()
-            con.lock.release()
-        sleep 10000
+proc genPings*(con: ref PlayTakConnection) =
+
+    proc pingLoop() {. async .} =
+        while con.isLoggedIn:
+            await con.send("PING")
+            await sleepAsync(30000)
+    asyncCheck pingLoop()
 
 proc loginAndSetup*(con: var PlayTakConnection, username: string, password: string): Error =
     var cmd = con.getMessage()
@@ -100,7 +89,7 @@ proc loginAndSetup*(con: var PlayTakConnection, username: string, password: stri
     if cmd != "Login or Register":
         return newError("Expected token 'Login or Register'")
 
-    con.send(&"Login {username} {password}")
+    waitfor con.send(&"Login {username} {password}")
 
     con.flushMessage()
     cmd = con.getMessage()
@@ -133,10 +122,7 @@ proc setListingGames*(con: var PlayTakConnection, val: bool) =
     con.state[listingGames] = val
 
 proc close*(con: var PlayTakConnection) =
-    con.lock.acquire()
-    {.locks: [con.lock].}:
-        con.ws.close()
-        con.lock.release()
+     con.ws.close()
 
 # proc customHandle*[R](con: var PlayTakConnection, handle: proc, args: varargs[untyped]): R =
 #     let cmd = con.getMessage()

@@ -9,7 +9,7 @@ license = "MIT"
 
 srcDir = "src"
 binDir = "bin"
-bin = @["main"]
+bin = @["tei", "playtak"]
 
 skipExt = @["nim"]
 
@@ -25,8 +25,8 @@ task debug, "Build debug":
         else: 
             when defined(macosx): "bin/debug/osx"
             else: "bin/debug/other"
-        
-    exec &"nim c -o:{binDir}/cli src/main.nim"
+    for b in bin:
+        exec &"nim c -o:{binDir}/{b} {srcDir}/{b}.nim"
 
 task release, "Build release":
     binDir =
@@ -34,7 +34,7 @@ task release, "Build release":
         else: 
             when defined(macosx): "bin/release/osx" 
             else: "bin/release/other"
-    
-    exec &"nim c -o:{binDir}/cli -d:release src/main.nim"
+    for b in bin:
+        exec &"nim c -o:{binDir}/{b} -d:release {srcDir}/{b}.nim"
 
 

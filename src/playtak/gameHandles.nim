@@ -106,7 +106,7 @@ proc processUndo*(con: var PlayTakConnection, gameConfig: var GameConfig): Error
             con.tell("Tell", gameConfig.opponent, "Bot is currently set to not accept undos")
             return default(Error)
         of UndoType.all, partial:
-            con.send(&"Game#{gameNumber} RequestUndo")
+            waitfor con.send(&"Game#{gameNumber} RequestUndo")
             return default(Error)
         #TODO separate logic for partial undos
         # of partial:
@@ -130,22 +130,26 @@ proc processDrawRequest*(con: var PlayTakConnection): Error =
 
     match cmd, rex"^Game#(\d+) OfferDraw$":
         let gameNumber = matches[0]
-        con.send(&"Game#{gameNumber} OfferDraw")
+        waitfor con.send(&"Game#{gameNumber} OfferDraw")
         return default(Error)
 
     return newError("No Draw Offered")
 
-proc createSeek*(con: var PlayTakConnection, size: int = 6, time: int = 1200, increment: int = 30, color: string = "A", komi: int = 4, 
-        flats: int = 30, caps: int = 1, player: string = "nqeron") =
+proc createSeek*(con: var PlayTakConnection, size: int = 6, time: int = 1200, increment: int = 30, color: string = "B", komi: int = 4, 
+        flats: int = 30, caps: int = 1, player: string = "") =
     
     let unrated = 0
     let tournament = 0
     # let triggerMove = 0
     # let timeAmount = 0
 
-    let seek = &"Seek {size} {time} {increment} {color} {komi} {flats} {caps} {unrated} {tournament} {player}"
+    var seek = &"Seek {size} {time} {increment} {color} {komi} {flats} {caps} {unrated} {tournament}"
+    if player != "":
+        seek.add(&" {player}")
     echo &"Creating seek: {seek}"
-    con.send(seek)
+    waitfor con.send(seek)
+    # echo "sent seek"
+    # echo con.lock
     con.setSeek(true)
     # con.flushMessage()
     # let resp = con.getMessage()

@@ -4,9 +4,8 @@ import ../tak/tps as tpsParse
 from ../tak/tile import Color
 import ../analysis/bot
 import ../analysis/evaluation
-import ../play/player
 import ../util/error
-import std/parseopt, std/parseutils, std/strformat, std/strutils, std/times
+import std/strformat, std/strutils, std/times
 import ../util/makeStatic
 
 proc analyzeNewGameBySize(sSize: static uint, cfg: AnalysisConfig): Error =
@@ -35,14 +34,14 @@ proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: An
 const NimblePkgVersion {.strdefine.} = ""
 const NimblePkgAuthor {.strdefine.} = ""
 
-proc teiLoop*() = 
+proc teiLoop*(dbg: bool = false) = 
 
     var halfKomi: int8 = 2'i8
     var size = 6'u
     var swap = true
     var tps = ""
     var level = 5
-    var debug = false
+    var debug = dbg
     
     while true:
         let message = readLine(stdin)

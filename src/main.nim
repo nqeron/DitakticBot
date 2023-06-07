@@ -1,20 +1,10 @@
-import tak/game as gm
-import tak/move as mv
-import tak/tps
-import tak/game as gm
-import play/play as playMove, play/player
+import play/play
 import tei/tei
 import playtak/client
-import asyncdispatch
 
 import std/strformat
 
-import util/error
-
-
-import std/parseopt, std/threadpool
-
-{.experimental: "parallel".}
+import std/parseopt
 
 const NimblePkgVersion {.strdefine.} = ""
 

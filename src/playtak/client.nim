@@ -1,19 +1,10 @@
-import asyncdispatch, ws, os, std/strformat
+import asyncdispatch, os, std/strformat
 import ../tak/game, ../tak/tile, ../tak/move, ../tak/tps
-import regex
-import std/strutils, std/strformat
+import std/strutils
 import ../util/error, ../util/makeStatic
 import std/sequtils, std/times, std/threadpool
 import ../analysis/bot, ../analysis/evaluation
 import connection, gameHandles, gameConfig, customHandles
-import locks
-
-{.experimental: "parallel".}
-
-type
-    Client = object
-        lock: Lock
-        con {.guard: lock.}: PlayTakConnection
 
 # var curGames: array[5, Game]
 
@@ -69,19 +60,19 @@ proc respondWithMove(con: var PlayTakConnection, gConfig: var GameConfig, analys
     case move.movedetail.kind:
     of place:
         let sq = move.square.ptnVal(gConfig.gameSize).toUpper
-        con.send(&"Game#{gConfig.gameNumber} P {sq}")
+        waitfor con.send(&"Game#{gConfig.gameNumber} P {sq}")
     of spread:
         let sqFrom = move.square
         let spread = move.movedetail.spreadVal
         let sqToStr = sqFrom.nextInDir(spread.direction, uint spread.pattern.len).ptnVal(gConfig.gameSize).toUpper
         let sqFromStr = sqFrom.ptnVal(gConfig.gameSize).toUpper
         let drops = spread.pattern.join(" ")
-        con.send(&"Game#{gConfig.gameNumber} M {sqFromStr} {sqToStr} {drops}")
+        waitfor con.send(&"Game#{gConfig.gameNumber} M {sqFromStr} {sqToStr} {drops}")
 
     return default(Error)
 
 
-proc processCommands(con: var PlayTakConnection) =
+proc processCommands(con: ref PlayTakConnection) {. thread .} =
     var prevCmd: string
     var cmd: string
     var gameConfig: GameConfig
@@ -159,13 +150,14 @@ proc processCommands(con: var PlayTakConnection) =
             con.createSeek()
             continue
 
-proc connectionLoop*() =
+proc connectionLoop*(dbg: bool = false) =
     # var ws = await newWebSocket("ws://playtak.com:9999/ws")
 
     let username = "ditakticBot"
     let password = getEnv("ditakticBotPassword")
+    var debug = dbg
 
-    var con: PlayTakConnection
+    let con: ref PlayTakConnection = new PlayTakConnection
 
     con.setupConnection()
 
@@ -179,11 +171,10 @@ proc connectionLoop*() =
         return
 
     echo "login"
-        # echo con.hasSeek, con.isInGame
+    
+    con.genPings()
+    con.processCommands()      
 
-    parallel:
-        spawn con.genPings()
-        spawn con.processCommands()        
-
-    con.send("quit")
+    # echo "quitting"
+    waitfor con.send("quit")
     con.close()
