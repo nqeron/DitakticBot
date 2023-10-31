@@ -13,7 +13,7 @@ template `$`*(err: Error): string =
     
 proc `add`*(err: var Error, msg: string, withRaise: bool = false) =
     err.trace.add(msg)
-    err.fail = withRaise
+    err.fail = err.fail or withRaise
     
 template newError*(msg: string, res: bool = true): Error =
     (fail: res, trace: @[msg])
