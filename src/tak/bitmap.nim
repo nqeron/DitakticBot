@@ -144,20 +144,6 @@ proc lowestBit*[N: static uint](bitmap: Bitmap[N]): Bitmap[N] =
     let remainder = bitmap.bitand(bitmap - 1)
     return bitmap.bitand(bitnot remainder)
 
-# proc `$`*[N: static uint](bitmap: Bitmap[N]): string =
-    
-#     let rowMask = 0xFFFFFFFFFFFFFFFF shr (64 - N)
-#     let columnMask = 1
-#     var result = ""
-#     for y in 0 ..< N:
-#         if y > 1: result.add("/")
-#         let row = (bitmap shr (N * N - y * N)).bitand(rowMask)
-#         for x in 0 ..< N:
-#             let column = (row shr (N - x)).bitand(columnMask)
-#             echo "column: ", column
-#             result.add(&"{column}")
-#     return result
-
 proc bits*[Z: static uint](btmap: Bitmap[Z]): BitIter[Z] =
     BitIter[Z](bitmap: btmap)
 
@@ -199,3 +185,17 @@ proc spansBoard*(bitmap: Bitmap): bool =
 
 proc fillsBoard*(bitmap: Bitmap): bool =
     bitmap == boardMask(bitmap.N)
+
+proc outMask*[N: static uint](bitmap: Bitmap[N]): string =
+    
+    let rowMask: Bitmap[N] = 0xFFFFFFFFFFFFFFFF'u64 shr (64'u64 - N)
+    let columnMask: Bitmap[N] = 1'u
+    var result = ""
+    for y in 0 ..< N:
+        if y > 1: result.add("/")
+        let row = (bitmap shr (N * N - y * N)).bitand(rowMask)
+        for x in 0 ..< N:
+            let column = (row shr (N - x)).bitand(columnMask)
+            # echo "column: ", column
+            result.add(&"{column}")
+    return result

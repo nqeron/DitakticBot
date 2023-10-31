@@ -27,6 +27,8 @@ proc makeMove(gameConfig: var GameConfig, move: Move) =
 
 proc analyzeBySize(sSize: static uint, gameConfig: var GameConfig, analysisConfig: AnalysisConfig): Error =
     let stoneCounts: StoneCounts = (wStones: gameConfig.flats, wCaps: gameConfig.caps, bStones: gameConfig.flats, bCaps: gameConfig.caps)
+    # echo "tps: ", gameConfig.tpsHistory[^1]
+    
     var (game, err) = parseGame(gameConfig.tpsHistory[^1], sSize, true, gameConfig.komi, stoneCounts)
     
     if ?err:
@@ -60,7 +62,9 @@ proc respondWithMove(con: var PlayTakConnection, gConfig: var GameConfig, analys
     case move.movedetail.kind:
     of place:
         let sq = move.square.ptnVal(gConfig.gameSize).toUpper
-        waitfor con.send(&"Game#{gConfig.gameNumber} P {sq}")
+        let pieceType: Piece = move.movedetail.placeVal
+        let pieceDataStr = if pieceType == cap: "C" elif pieceType == wall: "W" else: ""
+        waitfor con.send(&"Game#{gConfig.gameNumber} P {sq} {pieceDataStr}")
     of spread:
         let sqFrom = move.square
         let spread = move.movedetail.spreadVal

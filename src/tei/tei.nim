@@ -23,6 +23,12 @@ proc analyzeTPSbySize(sSize: static uint, tps: string, swap: bool, halfKomi: int
     let (eval, pv) = analyze(game, cfg)
     echo &"info score cp {eval} pv {pv}"
 
+proc tpsToBitBoardBySize(sSize: static uint, tps: string): Error =
+    let (game, err) = parseGame(tps, sSize)
+    if ?err:
+        return err
+    game.printBitBoard()
+
 
 proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: AnalysisConfig): Error =
         
@@ -30,6 +36,12 @@ proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: An
             chooseSize(size, analyzeNewGameBySize, cfg)
         else:
             chooseSize(size, analyzeTPSbySize, tps, swap, halfKomi, cfg)
+
+proc chooseTpsToBitboard(tps: string, size: uint): Error =
+    if tps == "":
+        return newError("No tps supplied")
+
+    chooseSize(size, tpsToBitBoardBySize, tps)
 
 const NimblePkgVersion {.strdefine.} = ""
 const NimblePkgAuthor {.strdefine.} = ""
@@ -40,7 +52,7 @@ proc teiLoop*(dbg: bool = false) =
     var size = 6'u
     var swap = true
     var tps = ""
-    var level = 5
+    var level = 6
     var debug = dbg
     
     while true:
@@ -127,6 +139,10 @@ proc teiLoop*(dbg: bool = false) =
 
         of "quit":
             break
+        of "bitboard":
+            let err = chooseTpsToBitboard(tps, size)
+            if ?err:
+                echo &"error: {$err}"
         else:
             echo "error: unknown command"
             continue
