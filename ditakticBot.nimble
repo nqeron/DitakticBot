@@ -2,7 +2,7 @@
 
 import std/strformat
 
-version = "0.0.1"
+version = "0.0.3"
 author = "Noah Fields (nqeron)"
 description = "DitakticBot"
 license = "MIT"

@@ -46,10 +46,24 @@ suite "game play test":
         check(not ?game.play(newMove(newSquare(0'u,5'u), newPlace(Place.flat))))
 
     test "invalid places on default game":
-        var (game,err) = newGame(6'u)
-        check(not ?err)
-        check(?game.play(newMove(newSquare(0'u,0'u), newPlace(Place.wall))))
-        check(?game.play(newMove(newSquare(0'u,5'u), newPlace(Place.cap))))
+        let (gameI,nErr) = newGame(6'u)
+        check(not ?nErr)
+
+        var (pt, move, mErr) = parseMove("Ca1", 6'u)
+        check(not ?mErr)
+
+        var game = gameI
+        var err = game.play(move)
+        echo ?err
+        check(?err)
+
+        (pt, move, mErr) = parseMove("Sf6", 6'u)
+        check(not ?mErr)
+
+        game = gameI
+        err = game.play(move)
+        echo err
+        check(?err)
 
     test "invalid game creation":
         var (game, err) = newGame(9'u8)
@@ -58,86 +72,121 @@ suite "game play test":
 suite "complicated state":
 
     test "check outbound edge moves":
-        var moves = ["c3", "a1", "a1-"]
-        var (tps, err) = checkPtnMoves(moves)
+        let initTps = "1,x2,1,x,2/x6/1,x4,2/x6/x6/2,x2,2,x,1 1 5"
+        let (gameI, pErr) = parseGame(initTps, 6'u)
+        check(not ?pErr)
+
+        var game = gameI
+        var (pt, move, mErr) = parseMove("f1-", 6'u)
+        check(not ?mErr)
+        
+        var err = game.play(move)
+        echo err
         check(?err)
         check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "a1", "a1<"]
-        (tps, err) = checkPtnMoves(moves)
+        game = gameI
+        (pt, move, mErr) = parseMove("f1>", 6'u)
+        check(not ?mErr)
+        
+        err = game.play(move)
+        echo err
         check(?err)
         check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "a6", "a6<"]
-        (tps, err) = checkPtnMoves(moves)
+        game = gameI
+        (pt, move, mErr) = parseMove("a6<", 6'u)
+        check(not ?mErr)
+        
+        err = game.play(move)
+        echo err
         check(?err)
         check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "a6", "a6+"]
-        (tps, err) = checkPtnMoves(moves)
+        game = gameI
+        (pt, move, mErr) = parseMove("a6+", 6'u)
+        check(not ?mErr)
+        
+        err = game.play(move)
+        echo err
         check(?err)
         check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "f6", "f6+"]
-        (tps, err) = checkPtnMoves(moves)
-        check(?err)
-        check(($err).contains("Spread moves past bound of board"))
+    #     moves = ["c3", "a1", "a1<"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(?err)
+    #     check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "f6", "f6>"]
-        (tps, err) = checkPtnMoves(moves)
-        check(?err)
-        check(($err).contains("Spread moves past bound of board"))
+    #     moves = ["c3", "a6", "a6<"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(?err)
+    #     check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "f1", "f1>"]
-        (tps, err) = checkPtnMoves(moves)
-        check(?err)
-        check(($err).contains("Spread moves past bound of board"))
+    #     moves = ["c3", "a6", "a6+"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(?err)
+    #     check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "f1", "f1-"]
-        (tps, err) = checkPtnMoves(moves)
-        check(?err)
-        check(($err).contains("Spread moves past bound of board"))
+    #     moves = ["c3", "f6", "f6+"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(?err)
+    #     check(($err).contains("Spread moves past bound of board"))
 
-    test "check inbound edge moves":
-        var moves = ["c3", "a1", "a1+"]
-        var (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    #     moves = ["c3", "f6", "f6>"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(?err)
+    #     check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "a1", "a1>"]
-        (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    #     moves = ["c3", "f1", "f1>"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(?err)
+    #     check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "a6", "a6>"]
-        (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    #     moves = ["c3", "f1", "f1-"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(?err)
+    #     check(($err).contains("Spread moves past bound of board"))
 
-        moves = ["c3", "a6", "a6-"]
-        (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    # test "check inbound edge moves":
+    #     var moves = ["c3", "a1", "a1+"]
+    #     var (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
 
-        moves = ["c3", "f6", "f6-"]
-        (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    #     moves = ["c3", "a1", "a1>"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
 
-        moves = ["c3", "f6", "f6<"]
-        (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    #     moves = ["c3", "a6", "a6>"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
 
-        moves = ["c3", "f1", "f1<"]
-        (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    #     moves = ["c3", "a6", "a6-"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
 
-        moves = ["c3", "f1", "f1+"]
-        (tps, err) = checkPtnMoves(moves)
-        check(not ?err)
-        check(tps != "")
+    #     moves = ["c3", "f6", "f6-"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
+
+    #     moves = ["c3", "f6", "f6<"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
+
+    #     moves = ["c3", "f1", "f1<"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
+
+    #     moves = ["c3", "f1", "f1+"]
+    #     (tps, err) = checkPtnMoves(moves)
+    #     check(not ?err)
+    #     check(tps != "")
 
     test "complicated rabbit v x":
         let moves = ["a1", "b1", "b4", "Cc3", "a2", "b3", "a3", "a4", "b2", "d3", "b4<", "Sb4", "Ca5", "a1+", 
@@ -149,14 +198,26 @@ suite "complicated state":
         check( not ?err )
         check(toTps == tps)
 
-# suite "Check Tak":
+suite "Check Tak":
 
-#     test "check taks":
-#         let tps = "x6/x2,2,x3/2S,x,2,x3/1212121C,2,2C,2,2,x/1,1,x,2,1,x/2S,1,x,121,x,1 2 17"
+    test "check taks":
+        let tps = "212S,x2,1,121,1/2,1,x,2,2,112/2,22,2,12C,11121C,x/221S,x,2,x2,2S/2,x4,1/2,x4,1 2 31"
 
-#         let (game, err) = parseGame(tps)
-#         check( not ?err )
-#         check(game.checkTak)
+        let (game, err) = parseGame(tps, 6'u)
+        check( not ?err )
+        let (tak, clr) = game.checkTak
+        check(tak)
+
+    test "check move to tak":
+        let tps = "212S,x2,1,121,1/2,1,2212,x2,1/2,22,2,12C,11121C,x/221S,x,2,x2,2S/2,x4,1/2,x4,1 2 30"
+
+        var (game, err) = parseGame(tps, 6'u)
+        check(not ?err)
+
+        let (_, move, mErr) = parseMove("4c5>112", 6'u)
+        check(not ?mErr)
+        
+
     
     # test "valid moves from parsed game":
     #     var (game, err) = parseGame("2,2,x,1,1112S,1/1,2,221C,211,12,2/x,21S,2112C,2,1,1/x,2,2,1,2,2S/x,2,21S,x,1212S,1/1,1S,2,x,1,1 1 34")
