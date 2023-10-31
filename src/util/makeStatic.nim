@@ -1,6 +1,5 @@
 import ../tak/game
 import error
-import std/macros
 
 
 template chooseSize*(size: uint, toApply: proc, args: varargs[untyped]): Error =

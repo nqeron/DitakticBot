@@ -2,7 +2,7 @@
 # from ../tak/bitmap import Bitmap
 # from ../tak/move import Direction
 import ../tak/game
-import std/times
+import std/times, std/math
 import ../tak/tile
 import ../util/error
 
@@ -21,7 +21,7 @@ type
         maxDuration*: Duration
 
 const Win: EvalType = 100_000
-const WinThreshold: EvalType = 99_000
+# const WinThreshold: EvalType = 99_000
 
 proc Zero*(t: typedesc[Evaluation]): Evaluation =
     Evaluation(0)
@@ -73,15 +73,19 @@ proc evaluate*(game: Game, cfg: AnalysisConfig, maxPlayer: bool, isOver: bool = 
 
     if isOver:
         if maxPlayer:
-            if resColor == Color.white:
-                return Win
+            if game.to_play == resColor:
+                # return Win
+                return EvalType.high - 1
             else:
-                return -Win
+                return EvalType.low + 1
+                # return -Win
         else:
-            if resColor == Color.black:
-                return Win
+            if game.to_play != resColor:
+                return EvalType.high - 1
+                # return Win
             else:
-                return -Win
+                return EvalType.low + 1
+                #  return -Win
 
     let clr = if maxPlayer: white else: black
     
@@ -114,7 +118,7 @@ proc newConfig*(level: int): AnalysisConfig =
         of 0: 8'u
         else: 6'u
 
-    let dur = initDuration(seconds = int (initDepth * depth * 10))
+    let dur = initDuration(seconds = int ((int initDepth) * (8 ^ depth)  ))
 
     return AnalysisConfig(level: lvl, initDepth: initDepth , depth: depth, maxDuration: dur)
 

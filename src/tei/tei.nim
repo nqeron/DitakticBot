@@ -4,9 +4,8 @@ import ../tak/tps as tpsParse
 from ../tak/tile import Color
 import ../analysis/bot
 import ../analysis/evaluation
-import ../play/player
 import ../util/error
-import std/parseopt, std/parseutils, std/strformat, std/strutils, std/times
+import std/strformat, std/strutils, std/times
 import ../util/makeStatic
 
 proc analyzeNewGameBySize(sSize: static uint, cfg: AnalysisConfig): Error =
@@ -24,6 +23,12 @@ proc analyzeTPSbySize(sSize: static uint, tps: string, swap: bool, halfKomi: int
     let (eval, pv) = analyze(game, cfg)
     echo &"info score cp {eval} pv {pv}"
 
+proc tpsToBitBoardBySize(sSize: static uint, tps: string): Error =
+    let (game, err) = parseGame(tps, sSize)
+    if ?err:
+        return err
+    game.printBitBoard()
+
 
 proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: AnalysisConfig): Error =
         
@@ -32,17 +37,23 @@ proc chooseAnalysis(tps: string, size: uint, swap: bool, halfKomi: int8, cfg: An
         else:
             chooseSize(size, analyzeTPSbySize, tps, swap, halfKomi, cfg)
 
+proc chooseTpsToBitboard(tps: string, size: uint): Error =
+    if tps == "":
+        return newError("No tps supplied")
+
+    chooseSize(size, tpsToBitBoardBySize, tps)
+
 const NimblePkgVersion {.strdefine.} = ""
 const NimblePkgAuthor {.strdefine.} = ""
 
-proc teiLoop*() = 
+proc teiLoop*(dbg: bool = false) = 
 
     var halfKomi: int8 = 2'i8
     var size = 6'u
     var swap = true
     var tps = ""
-    var level = 5
-    var debug = false
+    var level = 6
+    var debug = dbg
     
     while true:
         let message = readLine(stdin)
@@ -128,6 +139,10 @@ proc teiLoop*() =
 
         of "quit":
             break
+        of "bitboard":
+            let err = chooseTpsToBitboard(tps, size)
+            if ?err:
+                echo &"error: {$err}"
         else:
             echo "error: unknown command"
             continue

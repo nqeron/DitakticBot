@@ -330,6 +330,12 @@ proc checkFlatWin*(game: Game): (bool, Color, bool) =
     else:
         return (true, default(Color), true)
 
+proc playMoves*(game: var Game, moves: seq[Move]): Error =
+    for move in moves:
+        let err = game.play(move)
+        if ?err:
+            return err
+
 proc isOver*(game: Game, color: var Color): bool =
     let (flatWin, winner, tie) = game.checkFlatWin()
     if flatWin:
@@ -349,10 +355,18 @@ proc recalculateMetadata*(game: var Game) =
     while x < game.N:
         while y < game.N:
             let square: Square = (row: x, column: y)
-            let stack = game[square]
+            let stack: Tile = game[square]
+            let s = $stack
+            # echo &"setting square: {square} to {s}"
             if not stack.isEmpty:
                 game.meta.setStack(stack, square)
             inc(y)
+        y = 0'u
         inc(x)
 
     game.meta.hash = zobristHashState(game)
+
+proc printBitBoard*(game: Game) =
+    let p1BBStr = game.meta.p1Pieces.outMask
+    let p2BBStr = game.meta.p2Pieces.outMask
+    echo &"p1: {p1BBStr}, p2: {p2BBStr}"
