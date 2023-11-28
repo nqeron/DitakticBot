@@ -17,6 +17,7 @@ jobs:
       - run: nimble install -y
       - run: nimble release
   upload:
+    needs: build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/upload-artifact@v2
