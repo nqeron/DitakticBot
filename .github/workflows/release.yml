@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: windows build
-    runs-on: windows-latest, macos-latest
+    runs-on: [windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v3
