@@ -11,14 +11,14 @@ import connection, gameHandles, gameConfig, customHandles
 proc makeSizedMove(sSize: static uint, gameConfig: var GameConfig, move: Move): Error =
     let stoneCounts: StoneCounts = (wStones: gameConfig.flats, wCaps: gameConfig.caps, bStones: gameConfig.flats, bCaps: gameConfig.caps)
     var (game, err) = parseGame(gameConfig.tpsHistory[^1], sSize, true, gameConfig.komi, stoneCounts)
-    echo "before Move: ", gameConfig.tpsHistory[^1]
+    # echo "before Move: ", gameConfig.tpsHistory[^1]
     if ?err:
         return err
     let moveErr = game.play(move)
     if ?moveErr:
         return moveErr
     gameConfig.tpsHistory.add(game.toTps)
-    echo "Adding: ", game.toTps
+    # echo "Adding: ", game.toTps
     return default(Error)
 
 
@@ -51,13 +51,13 @@ proc analyzeBySize(sSize: static uint, gameConfig: var GameConfig, analysisConfi
     return default(Error)
 
 proc respondWithMove(con: var PlayTakConnection, gConfig: var GameConfig, analysisConfig: AnalysisConfig): Error =
-    con.tell(TELL, gConfig.opponent, &"Using config: {analysisConfig}")
+    # con.tell(TELL, gConfig.opponent, &"Using config: {analysisConfig}")
     let gConfErr = chooseSize(gConfig.gameSize, analyzeBySize, gConfig, analysisConfig)
     if ?gConfErr:
         return gConfErr
 
     let move: Move = gConfig.lastMove
-    con.tell("Tell", gConfig.opponent, &"Trying to play: {move}")
+    # con.tell("Tell", gConfig.opponent, &"Trying to play: {move}")
 
     case move.movedetail.kind:
     of place:
@@ -86,7 +86,7 @@ proc processCommands(con: ref PlayTakConnection) {. thread .} =
 
         prevCmd =  cmd
         cmd = con.getMessage()
-        echo &"Trying to process cmd: {cmd}"
+        # echo &"Trying to process cmd: {cmd}"
 
         # echo "Checking for Analysis"
         let anConfigErr = con.processAnalysisSettings(analysisConfig) 
@@ -119,7 +119,7 @@ proc processCommands(con: ref PlayTakConnection) {. thread .} =
                 con.flushMessage()
                 continue
 
-        let pUndoRequest = con.processUndo(gameConfig)
+        let pUndoRequest = con.processUndo(gameConfig, analysisConfig)
         if not ?pUndoRequest:
             con.flushMessage()
             continue

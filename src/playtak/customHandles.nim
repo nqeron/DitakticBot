@@ -15,9 +15,11 @@ proc processAnalysisSettings*(con: var PlayTakConnection, cfg: var AnalysisConfi
         let optString = matches[3]
 
         var pOpts = initOptParser(optString)
-        var level: AnalysisLevel
-        var initDepth: uint
+        var level: AnalysisLevel = cfg.level
+        var initDepth: uint = cfg.initDepth
+        var depth: uint = cfg.depth
         var cfgErr: Error
+        var cfgMod: bool = false
 
         for kind, key, val in pOpts.getopt():
             case kind:
@@ -29,13 +31,31 @@ proc processAnalysisSettings*(con: var PlayTakConnection, cfg: var AnalysisConfi
                     if ?err:
                         cfgErr.add($err, true)
                     level = lvl
+                    cfgMod = true
                 of "initDepth", "lookAhead":
                     try:
                         initDepth = parseUInt(val)
+                        cfgMod = true
+                    except ValueError:
+                        cfgErr.add(&"{key} is not a valid uint", true)
+                of "depth":
+                    try:
+                        depth = parseUInt(val)
+                        cfgMod = true
                     except ValueError:
                         cfgErr.add(&"{key} is not a valid uint", true)
                 else: discard #gen errors for not recognized options
             of cmdArgument: discard #also gen errors
+
+            if ?cfgErr:
+                return cfgErr
+
+            if cfgMod:
+                cfg.level = level
+                cfg.initDepth = initDepth
+                cfg.depth = depth
+                con.tell(tell, player, &"set analysis config to {cfg}")
+                return default(Error)
     
     match cmd, rex"^(Tell|Shout) <(\w+)> ditakticBot: (\w+)( \w+)?$":
         let tell = matches[0]

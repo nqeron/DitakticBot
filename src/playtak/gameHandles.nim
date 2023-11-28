@@ -1,11 +1,11 @@
 import connection, gameConfig 
-import ../tak/move, ../tak/tile, ../tak/game
+import ../tak/move, ../tak/tile, ../tak/game, ../tak/tps
 import regex
 import ../util/error, ../util/makeStatic
 import std/strutils, std/sequtils, std/strformat
 import asyncdispatch
-from ../analysis/evaluation import AnalysisConfig, newConfig
-
+from ../analysis/evaluation import AnalysisConfig, newConfig, EvalType
+import ../analysis/bot
 
 
 proc newGameConfigBySize(size: static uint, gameNumber: string, myColor: Color, opponent: string, komi: int8, flats: uint8, caps: uint8, swap: bool = true): (GameConfig, Error) =
@@ -86,8 +86,23 @@ proc processMove*(con: var PlayTakConnection, size: uint): (Move, Error)  =
     return (default(Move), newError("Not a valid move command"))
 
 
+proc shouldUndoPartial*(size: static uint, tps: string, gameConfig: GameConfig, analysisConfig: AnalysisConfig): (bool, Error) =
+    let (game, err) = parseGame(tps, size, gameConfig.swap, gameConfig.komi)
+    
+    if ?err:
+        return (false, err)
 
-proc processUndo*(con: var PlayTakConnection, gameConfig: var GameConfig): Error =
+    var adjustedAnConfig = analysisConfig
+    adjustedAnConfig.depth = 2'u   # For now, override depth to do a depth 2 search for tinue
+
+    let (eval, _) = game.analyze(adjustedAnConfig)
+    if eval >= EvalType.high - 1:
+        return (true, default(Error))
+
+    return (false, default(Error))
+
+
+proc processUndo*(con: var PlayTakConnection, gameConfig: GameConfig, analysisConfig: AnalysisConfig): Error =
     
     let cmd = con.getMessage()
 
@@ -105,8 +120,19 @@ proc processUndo*(con: var PlayTakConnection, gameConfig: var GameConfig): Error
         of none:
             con.tell("Tell", gameConfig.opponent, "Bot is currently set to not accept undos")
             return default(Error)
-        of UndoType.all, partial:
+        of UndoType.all:
             waitfor con.send(&"Game#{gameNumber} RequestUndo")
+            return default(Error)
+        of UndoType.partial:
+            let (shouldUndo, err) = chooseSizeWithRes[bool](gameConfig.gameSize, shouldUndoPartial, gameConfig.tpsHistory[^1], gameConfig, analysisConfig)
+            if ?err:
+                return err
+
+            if shouldUndo:
+                waitfor con.send(&"Game#{gameNumber} RequestUndo")
+                return default(Error)
+            
+            con.tell("Tell", gameConfig.opponent, "not accepted, due to Partial Undo")
             return default(Error)
         #TODO separate logic for partial undos
         # of partial:

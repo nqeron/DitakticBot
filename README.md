@@ -36,7 +36,7 @@ If you want to customize your game, run `nimble debug` followed by running the e
 
 ### Progress ##
 
-tei is working
+tei is working - alphabeta is fixed
 
 playtak connection is mostly there
 
@@ -44,8 +44,4 @@ playtak connection is mostly there
 
 ## On Tap ##
 
-- basic ai support:
-    - movegen implementation
-- github workflows
 - symmetries?
-- testing?

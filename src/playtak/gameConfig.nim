@@ -12,6 +12,7 @@ type
         gameSize*: uint
         myColor*: Color
         opponent*: string
+        swap*: bool
         komi*: int8 
         flats*: uint8
         caps*: uint8
