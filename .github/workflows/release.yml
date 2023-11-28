@@ -5,9 +5,10 @@ on:
 
 jobs:
   build:
-    name: windows build
-    runs-on: [windows-latest, macos-latest]
-
+    strategy:
+       matrix:
+        os: [window-latest, macos-latest]
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
       - uses: iffy/install-nim@v4.5.0
@@ -15,12 +16,15 @@ jobs:
           version: 1.6.10
       - run: nimble install -y
       - run: nimble release
-      - uses: actions/upload-artifact@v2
-        with: 
-          name: windows-artifact
-          path: bin/release/windows/
-      - uses: actions/upload-artifact@v2
-        with: 
-          name: osx-artifact
-          path: bin/release/osx/
-      
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/upload-artifact@v2
+      with: 
+        name: windows-artifact
+        path: bin/release/windows/
+    - uses: actions/upload-artifact@v2
+      with: 
+        name: osx-artifact
+        path: bin/release/osx/
+  
