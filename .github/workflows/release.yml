@@ -22,7 +22,7 @@ jobs:
 
 
     - name: Install reqs
-      run: nim install -y
+      run: nimble install -y
 
     - name: Build
       run: |
