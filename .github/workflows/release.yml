@@ -28,19 +28,6 @@ jobs:
       run: |
         nim compile --define:release --outdir:. --out:DitakticTei src/tei.nim
 
-    - name: Create Tag
-      uses: actions/github-script@v5
-      with:
-        github-token: ${{secrets.GITHUB_TOKEN}}
-        script: |
-          const version = "${{ github.event.inputs.version }}"
-          github.git.createRef({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            ref: `refs/tags/v${version}`,
-            sha: context.sha
-          })
-
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
