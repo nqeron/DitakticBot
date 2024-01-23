@@ -20,6 +20,10 @@ jobs:
       with:
         nim-version: '1.6.10'
 
+
+    - name: Install reqs
+      run: nim install -y
+
     - name: Build
       run: |
         nim compile --define:release --outdir:. --out:DitakticTei src/tei.nim
