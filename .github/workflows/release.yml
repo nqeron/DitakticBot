@@ -25,6 +25,7 @@ jobs:
       run: nimble install -y
 
     - name: Build
+      id: build
       run: |
         nim compile --define:release --outdir:. --out:DitakticTei src/tei.nim
 
@@ -46,6 +47,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: D:\a\DitakticBot\DitakticBot\DitakticTei
+        asset_path: ${{ steps.build.outputs.path }}
         asset_name: DitakticTei
         asset_content_type: application/octet-stream
