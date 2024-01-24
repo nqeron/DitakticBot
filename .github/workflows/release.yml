@@ -30,11 +30,11 @@ jobs:
     needs: release
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-latest, ubuntu-latest]
     
     runs-on: ${{ matrix.os }}
     env:
-      out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || '.sh' }} 
+      out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || (matrix.os == 'macos-latest' && '-mac.sh' || '-linux.sh') }} 
     steps:
       
     - name: Checkout code
