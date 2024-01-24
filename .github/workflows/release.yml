@@ -8,10 +8,8 @@ on:
         required: true
 
 jobs:
-
   release:
     runs-on: ubuntu-latest
-    
     steps:
     - name: Create Release
       id: create_release
@@ -23,15 +21,14 @@ jobs:
         release_name: Release v${{ github.event.inputs.version }}
         draft: false
         prerelease: false
-        
   build:
     strategy:
       matrix:
-        os: [windows-latest,macos-latest]
+        os: [windows-latest, macos-latest]
     
-    runs-on: ${{matrix.os}}
+    runs-on: ${{ matrix.os }}
     env:
-      out-ext: ${{ matrix.os == windows-latest && '.exe' || '.sh' }} 
+      out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || '.sh' }} 
     steps:
       
     - name: Checkout code
