@@ -24,6 +24,7 @@ jobs:
     - run: echo "upload_url=${{ steps.create_release.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
   
   build:
+    needs: release
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
