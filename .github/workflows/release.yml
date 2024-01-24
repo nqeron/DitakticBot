@@ -40,7 +40,7 @@ jobs:
     - name: Setup Nim
       uses: iffy/install-nim@v4.5.0
       with:
-        nim-version: '1.6.10'
+        version: 1.6.10
 
 
     - name: Install reqs
