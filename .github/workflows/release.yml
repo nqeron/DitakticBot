@@ -57,7 +57,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ jobs.release.steps.create_release.outputs.upload_url }}
         asset_path: ./DitakticTei${{ env.out-ext }}
         asset_name: DitakticTei${{ env.out-ext }}
         asset_content_type: application/octet-stream
