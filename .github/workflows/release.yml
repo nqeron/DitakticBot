@@ -30,20 +30,12 @@ jobs:
         os: [windows-latest,macos-latest]
     
     runs-on: ${{matrix.os}}
+    env:
+      out-ext: ${{ matrix.os == windows-latest && '.exe' || '.sh' }} 
     steps:
       
     - name: Checkout code
       uses: actions/checkout@v2
-    
-    - name: set extension in env
-      env:
-        out-ext: '.sh'
-      if: ${{ matrix.os == macos-latest }}
-    
-    - name: set extension in env - windows
-      env:
-        out-ext: '.exe'
-      if: ${{ matrix.os == windows-latest}}
 
     - name: Setup Nim
       uses: jiro4989/setup-nim-action@v1
