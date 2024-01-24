@@ -43,7 +43,8 @@ jobs:
     - name: Install reqs
       run: nimble install -y
 
-    - env:
+    - name: extension
+      env:
         out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || '.sh' }} 
     
     - name: Build
