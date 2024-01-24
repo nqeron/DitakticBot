@@ -21,14 +21,14 @@ jobs:
         release_name: Release v${{ github.event.inputs.version }}
         draft: false
         prerelease: false
+    - run: echo "release-url=${{ steps.create_release.outputs.upload_url }}" >> "$GITHUB_ENV"
+  
   build:
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
     
     runs-on: ${{ matrix.os }}
-    env:
-      out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || '.sh' }} 
     steps:
       
     - name: Checkout code
@@ -43,9 +43,9 @@ jobs:
     - name: Install reqs
       run: nimble install -y
 
-    - name: tmp dir
-      run: mkdir tmp
-
+    - env:
+        out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || '.sh' }} 
+    
     - name: Build
       id: build
       run: |
@@ -57,7 +57,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
+        upload_url: ${{ env.release-url }}
         asset_path: ./DitakticTei${{ env.out-ext }}
         asset_name: DitakticTei${{ env.out-ext }}
         asset_content_type: application/octet-stream
