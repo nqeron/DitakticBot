@@ -29,6 +29,8 @@ jobs:
         os: [windows-latest, macos-latest]
     
     runs-on: ${{ matrix.os }}
+    env:
+      out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || '.sh' }} 
     steps:
       
     - name: Checkout code
@@ -43,10 +45,6 @@ jobs:
     - name: Install reqs
       run: nimble install -y
 
-    - name: extension
-      env:
-        out-ext: ${{ matrix.os == 'windows-latest' && '.exe' || '.sh' }} 
-    
     - name: Build
       id: build
       run: |
